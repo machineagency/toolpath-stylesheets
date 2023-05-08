@@ -22,15 +22,19 @@ export class RootElement extends LitElement {
 
     render() {
         return html`
-            <div>hi ${this.random} ${this.myFn(2)}</div>
-            <toolpath-menu></toolpath-menu>
-            <tss-menu></tss-menu>
-            <visualization-pane></visualization-pane>
-            <debugging-pane></debugging-pane>
+            <div class="container">
+                <toolpath-menu></toolpath-menu>
+                <tss-menu></tss-menu>
+                <visualization-pane></visualization-pane>
+                <debugging-pane></debugging-pane>
+            </div>
         `;
     }
 
     static styles = css`
+        .container {
+            margin-left: 10px;
+        }
     `;
 }
 
