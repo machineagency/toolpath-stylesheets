@@ -7,16 +7,21 @@ export class TSSMenu extends LitElement {
     @property()
     random = 0;
 
-    myFn(x: number) {
-        return x + 1;
-    }
-
     render() {
         return html`
-            <div>I am the tss menu.</div>
+            <div class="menu">
+                <div>TSS Menu</div>
+                <ul>
+                    <li>To do.</li>
+                </ul>
+            </div>
         `;
     }
 
     static styles = css`
+        .menu {
+            border: 1px solid black;
+            margin: 5px;
+        }
     `;
 }
