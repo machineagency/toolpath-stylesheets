@@ -1,23 +1,23 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { ExampleToolpaths, Toolpath } from './example-toolpaths.ts';
+import { ExampleToolpaths, Toolpath, ToolpathName } from './example-toolpaths.ts';
 
 @customElement('toolpath-menu')
 export class ToolpathMenu extends LitElement {
-    static toolpathNames = Object.keys(ExampleToolpaths);
+    static toolpathNames = Object.keys(ExampleToolpaths) as ToolpathName[];
 
     @property()
-    currentToolpathName: string = 'gCodeWave';
+    currentToolpathName: ToolpathName = 'gCodeWave';
 
     @property()
     currentToolpath: Toolpath = ExampleToolpaths[this.currentToolpathName];
 
-    onToolpathClick(newName: string) {
+    onToolpathClick(newName: ToolpathName) {
         this.currentToolpathName = newName;
         this.currentToolpath = ExampleToolpaths[newName];
     }
 
-    maybeHighlight(name: string) {
+    maybeHighlight(name: ToolpathName) {
         return name === this.currentToolpathName ? 'highlight' : '';
     }
 

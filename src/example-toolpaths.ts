@@ -2,18 +2,19 @@ export type EBB = "ebb";
 export type GCode = "gcode";
 export type SBP = "sbp";
 export type ISA = EBB | GCode | SBP;
-export type instruction = string;
+export type Instruction = string;
 
 export interface Toolpath {
     isa: ISA;
-    instructions: instruction[];
+    instructions: Instruction[];
 }
 
-export interface Examples {
-    [key: string]: Toolpath;
-}
+export type ToolpathName = 'test1' | 'ebbSignature' | 'gCodeWave' |
+                           'ebbBox' | 'gears';
 
-export const ExampleToolpaths: Examples = {
+export type ToolpathCollection = Record<ToolpathName, Toolpath>;
+
+export const ExampleToolpaths: ToolpathCollection = {
      'test1': {
          isa: 'gcode',
          instructions : [
