@@ -1,22 +1,32 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
+import { VisualizationSpace } from './visualization-space.ts';
 
 @customElement('visualization-pane')
 export class VisualizationPane extends LitElement {
 
-    @property()
-    random = 0;
-
-    myFn(x: number) {
-        return x + 1;
-    }
+    visualizationSpace: VisualizationSpace | null = null;
 
     render() {
         return html`
-            <div>Look at me pretty visualization wow.</div>
+            <div id="canvas-container">
+            </div>
         `;
     }
 
+    firstUpdated() {
+        let canvasContainer = this.renderRoot.querySelector('#canvas-container') as HTMLDivElement;
+        if (canvasContainer) {
+            this.visualizationSpace = new VisualizationSpace(canvasContainer);
+        }
+        else {
+            console.error('Could not load the visualization space.');
+        }
+    }
+
     static styles = css`
+        #canvas-container canvas {
+            border: 1px solid black;
+        }
     `;
 }

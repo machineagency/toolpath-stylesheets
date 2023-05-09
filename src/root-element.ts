@@ -28,7 +28,7 @@ export class RootElement extends LitElement {
                     <tss-menu></tss-menu>
                 </div>
                 <visualization-pane></visualization-pane>
-                <debugging-pane></debugging-pane>
+                <!-- <debugging-pane></debugging-pane> -->
             </div>
         `;
     }
@@ -37,6 +37,9 @@ export class RootElement extends LitElement {
         .container {
             margin-left: 10px;
             display: flex;
+        }
+        visualization-pane {
+            width: 750px;
         }
     `;
 }

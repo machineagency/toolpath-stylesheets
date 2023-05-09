@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 export class VisualizationSpace {
+    protected domContainer: HTMLDivElement;
     protected scene: THREE.Scene;
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
@@ -10,7 +11,8 @@ export class VisualizationSpace {
     protected vizGroup: THREE.Group;
     protected renderRequested: boolean;
 
-    constructor() {
+    constructor(domContainer: HTMLDivElement) {
+        this.domContainer = domContainer;
         this.scene = this.initScene();
         this.envelopeGroup = this.createEnvelopeGroup();
         this.vizGroup = new THREE.Group();
@@ -74,7 +76,8 @@ export class VisualizationSpace {
 
     initScene() {
         let scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x23241f);
+        // scene.background = new THREE.Color(0x23241f);
+        scene.background = new THREE.Color(0xffffff);
         let topDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
         let leftDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.50);
         let rightDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.25);
@@ -91,16 +94,21 @@ export class VisualizationSpace {
     initCamera(centerPoint: THREE.Vector3, isOrtho: boolean) {
         let camera;
         let aspect = window.innerWidth / window.innerHeight;
-        let viewSize = 150;
         if (isOrtho) {
-            camera = new THREE.OrthographicCamera(-viewSize * aspect,
-                viewSize * aspect,
-                viewSize, -viewSize, -1000, 10000);
-            camera.zoom = 0.95;
+            camera = new THREE.OrthographicCamera(
+              -720 / 2,
+              720 / 2,
+              480 / 2,
+              -480 / 2,
+              1,
+              10000
+            );
+            camera.up = new THREE.Vector3(0, -1, 0);
+            camera.zoom = 2;
             camera.updateProjectionMatrix();
-            camera.frustumCulled = false;
-            camera.position.set(-500, 500, 500); // I don't know why this works
+            camera.position.set(-50, -50, -50);
             camera.lookAt(centerPoint);
+            camera.updateProjectionMatrix();
         }
         else {
             let fov = 50;
@@ -126,14 +134,8 @@ export class VisualizationSpace {
     initThreeRenderer() {
         let renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        let maybeDom = document.getElementById('visualization-space');
-        if (maybeDom) {
-            maybeDom.appendChild(renderer.domElement);
-        }
-        else {
-            throw new Error('bad');
-        }
+        renderer.setSize(720, 480);
+        this.domContainer.appendChild(renderer.domElement);
         return renderer;
     }
 
@@ -161,12 +163,12 @@ export class VisualizationSpace {
             height: 17,
             length: 218
         };
-        let whitesmoke = 0xf5f5f5;
+        let black = 0x000000;
         let boxGeom = new THREE.BoxGeometry(dimensions.width,
                     dimensions.height, dimensions.length, 2, 2, 2);
         let edgesGeom = new THREE.EdgesGeometry(boxGeom);
         let material = new THREE.LineDashedMaterial({
-            color : whitesmoke,
+            color : black,
             linewidth: 1,
             scale: 1,
             dashSize: 3,
