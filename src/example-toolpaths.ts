@@ -1,13 +1,4 @@
-export type EBB = "ebb";
-export type GCode = "gcode";
-export type SBP = "sbp";
-export type ISA = EBB | GCode | SBP;
-export type Instruction = string;
-
-export interface Toolpath {
-    isa: ISA;
-    instructions: Instruction[];
-}
+import { Toolpath } from './type-utils.ts';
 
 export type ToolpathName = 'test1' | 'ebbSignature' | 'gCodeWave' |
                            'ebbBox' | 'gears';

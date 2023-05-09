@@ -1,22 +1,22 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { Toolpath } from './example-toolpaths.ts';
-
-type TSSName = string;
-type TSS = (tp: Toolpath) => void;
+// import { Toolpath } from './type-utils.ts';
+import { tssCollection, TSSCollection, TSSName, TSS } from './tss.ts';
 
 @customElement('tss-menu')
 export class TSSMenu extends LitElement {
-    static tssNames: TSSName[] = ['test1', 'test2'];
+    tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
+    tssCollection: TSSCollection = tssCollection;
 
     @property()
-    currentTSSName: TSSName = 'temporary';
+    currentTSSName: TSSName = this.tssNames[0];
 
     @property()
-    currentTSS: TSS = (tp: Toolpath) => { tp; };
+    currentTSS: TSS = this.tssCollection[this.currentTSSName];
 
     onTSSClick(newName: TSSName) {
-        return newName;
+        this.currentTSSName = newName;
+        this.currentTSS = this.tssCollection[newName];
     }
 
     maybeHighlight(name: TSSName) {
@@ -28,7 +28,7 @@ export class TSSMenu extends LitElement {
             <div class="menu">
                 <div class="menu-head">TSS Menu</div>
                 <ul class="tss-list">
-                    ${TSSMenu.tssNames.map(name => {
+                    ${this.tssNames.map(name => {
                         return html`
                             <li @click=${() => this.onTSSClick(name)}
                                 class=${this.maybeHighlight(name)}>
@@ -46,18 +46,18 @@ export class TSSMenu extends LitElement {
             margin: 5px;
             width: 275px;
         }
-        .toolpath-list {
-            height: 250px;
+        .tss-list {
+            height: 150px;
             border: 1px solid black;
             overflow-y: scroll;
             padding-left: 5px;
             margin: 5px;
         }
-        .toolpath-list li {
+        .tss-list li {
             cursor: pointer;
             list-style-type: none;
         }
-        .toolpath-list li:hover {
+        .tss-list li:hover {
             background-color: gray;
         }
         .highlight {

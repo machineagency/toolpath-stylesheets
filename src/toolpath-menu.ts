@@ -1,13 +1,14 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { ExampleToolpaths, Toolpath, ToolpathName } from './example-toolpaths.ts';
+import { Toolpath } from './type-utils.ts';
+import { ExampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 
 @customElement('toolpath-menu')
 export class ToolpathMenu extends LitElement {
-    static toolpathNames = Object.keys(ExampleToolpaths) as ToolpathName[];
+    toolpathNames = Object.keys(ExampleToolpaths) as ToolpathName[];
 
     @property()
-    currentToolpathName: ToolpathName = 'gCodeWave';
+    currentToolpathName: ToolpathName = this.toolpathNames[0];
 
     @property()
     currentToolpath: Toolpath = ExampleToolpaths[this.currentToolpathName];
@@ -26,7 +27,7 @@ export class ToolpathMenu extends LitElement {
             <div class="menu">
                 <div class="menu-head">Toolpath Menu</div>
                 <ul class="toolpath-list">
-                    ${ToolpathMenu.toolpathNames.map(name => {
+                    ${this.toolpathNames.map(name => {
                         return html`
                             <li @click=${() => this.onToolpathClick(name)}
                                 class=${this.maybeHighlight(name)}>
