@@ -1,18 +1,22 @@
-export type EBB = string;
-export type GCode = string;
-export type SBP = string;
-
+export type EBB = "ebb";
+export type GCode = "gcode";
+export type SBP = "sbp";
 export type ISA = EBB | GCode | SBP;
+export type instruction = string;
 
-export interface Toolpath<InstrType> {
-    instructions: InstrType[];
+export interface Toolpath {
+    isa: ISA;
+    instructions: instruction[];
 }
 
-export class ExampleToolpaths {
-    [key: string]: Toolpath<GCode>;
+export interface Examples {
+    [key: string]: Toolpath;
+}
 
-    public static test1 : Toolpath<GCode> = {
-        instructions : [
+export const ExampleToolpaths: Examples = {
+     'test1': {
+         isa: 'gcode',
+         instructions : [
             '(TEST)',
             '(T3  D=10. CR=0. - ZMIN=-0.5 - FLAT END MILL)',
             'G0 G90 G94 G17',
@@ -1680,9 +1684,10 @@ export class ExampleToolpaths {
             'G53 G0 Z0.',
             'M30'
         ]
-    }
+    },
 
-    public static ebbSignature : Toolpath<EBB> = {
+    ebbSignature: {
+        isa: 'ebb',
         instructions : [
             'EM,1,1',
             'SM,26,-13,74',
@@ -2124,9 +2129,10 @@ export class ExampleToolpaths {
             'SM,27,-76,-129',
             'SM,26,-38,-65',
         ]
-    };
+    },
 
-    public static gCodeWave: Toolpath<GCode> = {
+    gCodeWave: {
+        isa: 'gcode',
         instructions: [
             'G21 ; Set units to mm.',
             'G90 ; Absolute positioning.',
@@ -2359,9 +2365,10 @@ export class ExampleToolpaths {
             '; ---end path---',
             'G0 X0 Y0'
         ]
-    }
+    },
 
-    public static ebbBox : Toolpath<EBB> = {
+    ebbBox: {
+        isa: 'ebb',
         instructions: [
             'EM,1,1',
             'SM,26,34,67',
@@ -2409,9 +2416,10 @@ export class ExampleToolpaths {
             'SM,27,-67,-134',
             'SM,26,-34,-67',
         ]
-    };
+    },
 
-    public static gears : Toolpath<GCode> = {
+    gears: {
+        isa: 'gcode',
         instructions: [
             'G17',
             'G20',
@@ -11228,6 +11236,6 @@ export class ExampleToolpaths {
             'M09',
             'M30'
         ]
-    };
+    }
 }
 
