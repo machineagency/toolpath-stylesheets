@@ -23,8 +23,10 @@ export class RootElement extends LitElement {
     render() {
         return html`
             <div class="container">
-                <toolpath-menu></toolpath-menu>
-                <tss-menu></tss-menu>
+                <div class="menu-col">
+                    <toolpath-menu></toolpath-menu>
+                    <tss-menu></tss-menu>
+                </div>
                 <visualization-pane></visualization-pane>
                 <debugging-pane></debugging-pane>
             </div>
@@ -34,6 +36,7 @@ export class RootElement extends LitElement {
     static styles = css`
         .container {
             margin-left: 10px;
+            display: flex;
         }
     `;
 }

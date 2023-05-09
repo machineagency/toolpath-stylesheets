@@ -24,7 +24,7 @@ export class ToolpathMenu extends LitElement {
     render() {
         return html`
             <div class="menu">
-                <div>Toolpath Menu</div>
+                <div class="menu-head">Toolpath Menu</div>
                 <ul class="toolpath-list">
                     ${ToolpathMenu.toolpathNames.map(name => {
                         return html`
@@ -78,6 +78,9 @@ export class ToolpathMenu extends LitElement {
         .highlight {
             background-color: black;
             color: white;
+        }
+        .menu-head {
+            margin: 10px;
         }
     `;
 }
