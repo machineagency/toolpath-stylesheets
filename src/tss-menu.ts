@@ -15,12 +15,31 @@ export class TSSMenu extends LitElement {
     currentTSS: TSS = this.tssCollection[this.currentTSSName];
 
     onTSSClick(newName: TSSName) {
-        this.currentTSSName = newName;
-        this.currentTSS = this.tssCollection[newName];
+        if (this.currentTSSName !== newName) {
+            this.currentTSSName = newName;
+            this.currentTSS = this.tssCollection[newName];
+            this.dispatchTSSChanged();
+        };
+    }
+
+    dispatchTSSChanged() {
+        const options = {
+          detail: {
+            tssName: this.currentTSSName,
+            tss: this.currentTSS
+          },
+          bubbles: true,
+          composed: true
+        };
+        this.dispatchEvent(new CustomEvent('tss-changed', options));
     }
 
     maybeHighlight(name: TSSName) {
         return name === this.currentTSSName ? 'highlight' : '';
+    }
+
+    firstUpdated() {
+        this.dispatchTSSChanged();
     }
 
     render() {

@@ -1,9 +1,12 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { ToolpathMenu } from './toolpath-menu.ts';
 import { TSSMenu } from './tss-menu.ts';
 import { VisualizationPane } from './visualization-pane.ts';
 import { DebuggingPane } from './debugging-pane.ts';
+import { TSS } from './tss.ts';
+import { Toolpath, IR } from './type-utils.ts';
+import * as THREE from 'three';
 
 import './toolpath-menu.ts';
 import './tss-menu.ts';
@@ -12,12 +15,16 @@ import './debugging-pane.ts';
 
 @customElement('root-element')
 export class RootElement extends LitElement {
+    
+    currentTSS: TSS = (_: IR[]) => new THREE.Group();
+    currentToolpath: Toolpath = { isa: 'gcode', instructions: [] };
 
-    @property()
-    random = 0;
+    tssListener(e: CustomEvent) {
+        this.currentTSS = e.detail.tss;
+    }
 
-    myFn(x: number) {
-        return x + 1;
+    toolpathListener(e: CustomEvent) {
+        this.currentToolpath = e.detail.toolpath;
     }
 
     render() {
@@ -25,12 +32,16 @@ export class RootElement extends LitElement {
             <div class="container">
                 <div class="menu-col">
                     <toolpath-menu></toolpath-menu>
-                    <tss-menu></tss-menu>
+                    <tss-menu @tss-changed=${this.tssListener}></tss-menu>
                 </div>
                 <visualization-pane></visualization-pane>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
         `;
+    }
+
+    firstUpdated() {
+        console.log('called');
     }
 
     static styles = css`
