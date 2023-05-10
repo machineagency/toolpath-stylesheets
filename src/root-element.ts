@@ -4,11 +4,9 @@ import { ToolpathMenu } from './toolpath-menu.ts';
 import { TSSMenu } from './tss-menu.ts';
 import { VisualizationPane } from './visualization-pane.ts';
 import { DebuggingPane } from './debugging-pane.ts';
-import { TSS } from './tss.ts';
-import { Toolpath, IR } from './type-utils.ts';
-import { ExampleToolpaths, ToolpathName } from './example-toolpaths.ts';
-
-import * as THREE from 'three';
+import { Toolpath } from './type-utils.ts';
+import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
+import { tssCollection, TSSName, TSS } from './tss.ts';
 
 import './toolpath-menu.ts';
 import './tss-menu.ts';
@@ -18,23 +16,39 @@ import './debugging-pane.ts';
 @customElement('root-element')
 export class RootElement extends LitElement {
     
-    currentTSS: TSS = (_: IR[]) => new THREE.Group();
-
-    toolpathNames = Object.keys(ExampleToolpaths) as ToolpathName[];
+    toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
+    tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
 
     @property()
     currentToolpathName: ToolpathName = this.toolpathNames[0];
 
     @property()
-    currentToolpath: Toolpath = ExampleToolpaths[this.currentToolpathName];
+    currentToolpath: Toolpath = exampleToolpaths[this.currentToolpathName];
+
+    @property()
+    currentTSSName: TSSName = this.tssNames[0];
+
+    @property()
+    currentTSS: TSS = tssCollection[this.currentTSSName];
 
     onToolpathClick(newName: ToolpathName) {
         this.currentToolpathName = newName;
-        this.currentToolpath = ExampleToolpaths[newName];
+        this.currentToolpath = exampleToolpaths[newName];
     }
 
-    maybeHighlight(name: ToolpathName) {
+    onTSSClick(newName: TSSName) {
+        if (this.currentTSSName !== newName) {
+            this.currentTSSName = newName;
+            this.currentTSS = tssCollection[newName];
+        };
+    }
+
+    maybeHighlightToolpath(name: ToolpathName) {
         return name === this.currentToolpathName ? 'highlight' : '';
+    }
+
+    maybeHighlightTSS(name: TSSName) {
+        return name === this.currentTSSName ? 'highlight' : '';
     }
 
     render() {
@@ -43,30 +57,44 @@ export class RootElement extends LitElement {
                 <div class="menu-col">
                     <div class="menu">
                         <div class="menu-head">Toolpath Menu</div>
-                        <ul class="toolpath-list">
+                        <ul class="list">
                             ${this.toolpathNames.map(name => {
                                 return html`
                                     <li @click=${() => this.onToolpathClick(name)}
-                                        class=${this.maybeHighlight(name)}>
+                                        class=${this.maybeHighlightToolpath(name)}>
                                         ${name}</li>
                                 `;
                             })}
                         </ul>
-                        <ul class="toolpath-preview">
+                        <ul class="preview">
                             ${this.currentToolpath.instructions.map((i: string) => {
                                 return html`<li><code>${i}</code></li>`;
                             })}
                         </ul>
                     </div>
+                    <div class="menu">
+                        <div class="menu-head">TSS Menu</div>
+                        <ul class="list">
+                            ${this.tssNames.map(name => {
+                                return html`
+                                    <li @click=${() => this.onTSSClick(name)}
+                                        class=${this.maybeHighlightTSS(name)}>
+                                        ${name}</li>
+                                `;
+                            })}
+                        </ul>
+                    </div>
                 </div>
-                <visualization-pane></visualization-pane>
+                <div class="visualization-pane-col">
+                    <visualization-pane></visualization-pane>
+                </div>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
         `;
     }
 
     firstUpdated() {
-        console.log('called');
+        console.log('first update - todo');
     }
 
     static styles = css`
@@ -82,28 +110,28 @@ export class RootElement extends LitElement {
             margin: 5px;
             width: 275px;
         }
-        .toolpath-list {
-            height: 250px;
+        .list {
+            max-height: 250px;
             border: 1px solid black;
             overflow-y: scroll;
             padding-left: 5px;
             margin: 5px;
         }
-        .toolpath-list li {
+        .list li {
             cursor: pointer;
             list-style-type: none;
         }
-        .toolpath-list li:hover {
+        .list li:hover {
             background-color: gray;
         }
-        .toolpath-preview {
+        .preview {
             border: 1px solid black;
             margin: 5px;
             height: 200px;
             overflow-y: scroll;
             padding-left: 5px;
         }
-        .toolpath-preview li {
+        .preview li {
             margin-top: -5px;
             margin-bottom: -5px;
             list-style-type: none;
@@ -114,6 +142,9 @@ export class RootElement extends LitElement {
         }
         .menu-head {
             margin: 10px;
+        }
+        .visualization-pane-col {
+            margin: 5px;
         }
     `;
 }

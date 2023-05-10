@@ -1,21 +1,21 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { Toolpath } from './type-utils.ts';
-import { ExampleToolpaths, ToolpathName } from './example-toolpaths.ts';
+import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 
 @customElement('toolpath-menu')
 export class ToolpathMenu extends LitElement {
-    toolpathNames = Object.keys(ExampleToolpaths) as ToolpathName[];
+    toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
 
     @property()
     currentToolpathName: ToolpathName = this.toolpathNames[0];
 
     @property()
-    currentToolpath: Toolpath = ExampleToolpaths[this.currentToolpathName];
+    currentToolpath: Toolpath = exampleToolpaths[this.currentToolpathName];
 
     onToolpathClick(newName: ToolpathName) {
         this.currentToolpathName = newName;
-        this.currentToolpath = ExampleToolpaths[newName];
+        this.currentToolpath = exampleToolpaths[newName];
     }
 
     maybeHighlight(name: ToolpathName) {

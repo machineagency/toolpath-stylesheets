@@ -5,7 +5,7 @@ export type ToolpathName = 'test1' | 'ebbSignature' | 'gCodeWave' |
 
 export type ToolpathCollection = Record<ToolpathName, Toolpath>;
 
-export const ExampleToolpaths: ToolpathCollection = {
+export const exampleToolpaths: ToolpathCollection = {
      'test1': {
          isa: 'gcode',
          instructions : [
