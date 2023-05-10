@@ -6,11 +6,6 @@ import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
 
-import './toolpath-menu.ts';
-import './tss-menu.ts';
-import './visualization-pane.ts';
-import './debugging-pane.ts';
-
 @customElement('root-element')
 export class RootElement extends LitElement {
     
