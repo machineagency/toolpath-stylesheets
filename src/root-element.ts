@@ -8,7 +8,7 @@ import { VisualizationSpace } from './visualization-space.ts';
 
 @customElement('root-element')
 export class RootElement extends LitElement {
-    
+
     toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
     tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
     visualizationSpace: VisualizationSpace | null = null;
@@ -37,6 +37,10 @@ export class RootElement extends LitElement {
             this.currentTSSName = newName;
             this.currentTSS = tssCollection[newName];
         };
+    }
+
+    renderTSS() {
+        // TODO
     }
 
     maybeHighlightToolpath(name: ToolpathName) {
