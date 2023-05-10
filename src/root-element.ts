@@ -1,12 +1,10 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { ToolpathMenu } from './toolpath-menu.ts';
-import { TSSMenu } from './tss-menu.ts';
-import { VisualizationPane } from './visualization-pane.ts';
-import { DebuggingPane } from './debugging-pane.ts';
+
 import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
+import { VisualizationSpace } from './visualization-space.ts';
 
 import './toolpath-menu.ts';
 import './tss-menu.ts';
@@ -18,6 +16,7 @@ export class RootElement extends LitElement {
     
     toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
     tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
+    visualizationSpace: VisualizationSpace | null = null;
 
     @property()
     currentToolpathName: ToolpathName = this.toolpathNames[0];
@@ -32,8 +31,10 @@ export class RootElement extends LitElement {
     currentTSS: TSS = tssCollection[this.currentTSSName];
 
     onToolpathClick(newName: ToolpathName) {
-        this.currentToolpathName = newName;
-        this.currentToolpath = exampleToolpaths[newName];
+        if (this.currentToolpathName !== newName) {
+            this.currentToolpathName = newName;
+            this.currentToolpath = exampleToolpaths[newName];
+        }
     }
 
     onTSSClick(newName: TSSName) {
@@ -86,7 +87,8 @@ export class RootElement extends LitElement {
                     </div>
                 </div>
                 <div class="visualization-pane-col">
-                    <visualization-pane></visualization-pane>
+                    <div id="canvas-container">
+                    </div>
                 </div>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
@@ -94,7 +96,13 @@ export class RootElement extends LitElement {
     }
 
     firstUpdated() {
-        console.log('first update - todo');
+        let canvasContainer = this.renderRoot.querySelector('#canvas-container') as HTMLDivElement;
+        if (canvasContainer) {
+            this.visualizationSpace = new VisualizationSpace(canvasContainer);
+        }
+        else {
+            console.error('Could not load the visualization space.');
+        }
     }
 
     static styles = css`
@@ -146,15 +154,14 @@ export class RootElement extends LitElement {
         .visualization-pane-col {
             margin: 5px;
         }
+        #canvas-container canvas {
+            border: 1px solid black;
+        }
     `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
     'root-element': RootElement;
-    'toolpath-menu': ToolpathMenu;
-    'tss-menu': TSSMenu;
-    'visualization-pane': VisualizationPane;
-    'debugging-pane': DebuggingPane;
   }
 }
