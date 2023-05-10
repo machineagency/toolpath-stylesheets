@@ -1,10 +1,12 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { Toolpath } from './type-utils.ts';
+import { Toolpath, Instruction, Operation, IR } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
+
+import * as THREE from 'three';
 
 @customElement('root-element')
 export class RootElement extends LitElement {
@@ -30,6 +32,7 @@ export class RootElement extends LitElement {
             this.currentToolpathName = newName;
             this.currentToolpath = exampleToolpaths[newName];
         }
+        this.renderTSS();
     }
 
     onTSSClick(newName: TSSName) {
@@ -41,6 +44,8 @@ export class RootElement extends LitElement {
 
     renderTSS() {
         // TODO
+        let lowered = this.lowerGCode(this.currentToolpath);
+        console.log(lowered);
     }
 
     maybeHighlightToolpath(name: ToolpathName) {
@@ -104,6 +109,50 @@ export class RootElement extends LitElement {
         }
     }
 
+    lowerGCode(gcodeTp: Toolpath) {
+      let irs: IR[] = [];
+
+      let opcodeRe = /(G[0-9]+|M[0-9]+)/;
+      let opXRe = /X(-?[0-9]+.[0-9]+)/;
+      let opYRe = /Y(-?[0-9]+.[0-9]+)/;
+      let opZRe = /Z(-?[0-9]+.[0-9]+)/;
+      let opFRe = /F(-?[0-9]+.[0-9]+)/;
+      let findOpcode = (instruction: Instruction, argRe: RegExp) => {
+        let maybeArgResults = instruction.match(argRe);
+        if (!maybeArgResults) {
+          return "";
+        }
+        return maybeArgResults[0];
+      };
+      let findArg = (instruction: Instruction, argRe: RegExp) => {
+        let maybeArgResults = instruction.match(argRe);
+        if (!maybeArgResults || maybeArgResults.length < 2) {
+          return null;
+        }
+        return parseFloat(maybeArgResults[1]) || null;
+      };
+
+      gcodeTp.instructions.forEach(function (instruction: Instruction) {
+        if (!instruction || instruction[0] == "''") {
+          return;
+        }
+        let tokens = instruction.trim().split(" ");
+
+        let newPosition;
+        let opcode = findOpcode(tokens[0], opcodeRe);
+        if (opcode === "G0" || opcode === "G1") {
+          let opx = findArg(tokens[1], opXRe);
+          let opy = findArg(tokens[2], opYRe);
+          let opz = findArg(tokens[3], opZRe);
+          let opf = findArg(tokens[4], opFRe);
+
+          newPosition = ir("move", opx, opy, opz, opf);
+          irs.push(newPosition);
+        }
+      });
+      return irs;
+    }
+
     static styles = css`
         .container {
             margin-left: 10px;
@@ -163,4 +212,36 @@ declare global {
   interface HTMLElementTagNameMap {
     'root-element': RootElement;
   }
+}
+
+function ir(operation: Operation,
+            x: number | null,
+            y: number | null,
+            z: number | null,
+            f: number | null): IR {
+    return {
+        op: operation,
+        args: {
+            x: x,
+            y: y,
+            z: z,
+            f: f
+        }
+    }
+}
+
+function basicVis(irs: IR[]) {
+  let moveCurves: THREE.LineCurve3[] = [];
+  let currentPos = new THREE.Vector3();
+  irs.forEach(function (ir) {
+    let newPos = new THREE.Vector3(
+      ir.args.x,
+      ir.args.y,
+      ir.args.z
+    );
+    let moveCurve = new THREE.LineCurve3(currentPos, newPos);
+    moveCurves.push(moveCurve);
+    currentPos = newPos;
+  });
+  return moveCurves;
 }

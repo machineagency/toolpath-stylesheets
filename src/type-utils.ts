@@ -9,8 +9,14 @@ export interface Toolpath {
     instructions: Instruction[];
 }
 
+export type Operation = "move";
 export interface IR {
-    isa: ISA;
-    original: Instruction;
-}
+    op: Operation;
+    args: {
+        x: number | undefined;
+        y: number | undefined;
+        z: number | undefined;
+        f: number | undefined;
+    }
+};
 
