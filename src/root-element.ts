@@ -45,7 +45,8 @@ export class RootElement extends LitElement {
     renderTSS() {
         // TODO
         let lowered = this.lowerGCode(this.currentToolpath);
-        console.log(lowered);
+        let myViz = basicVis(lowered);
+        console.log(myViz);
     }
 
     maybeHighlightToolpath(name: ToolpathName) {
@@ -136,15 +137,14 @@ export class RootElement extends LitElement {
         if (!instruction || instruction[0] == "''") {
           return;
         }
-        let tokens = instruction.trim().split(" ");
 
         let newPosition;
-        let opcode = findOpcode(tokens[0], opcodeRe);
+        let opcode = findOpcode(instruction, opcodeRe);
         if (opcode === "G0" || opcode === "G1") {
-          let opx = findArg(tokens[1], opXRe);
-          let opy = findArg(tokens[2], opYRe);
-          let opz = findArg(tokens[3], opZRe);
-          let opf = findArg(tokens[4], opFRe);
+          let opx = findArg(instruction, opXRe);
+          let opy = findArg(instruction, opYRe);
+          let opz = findArg(instruction, opZRe);
+          let opf = findArg(instruction, opFRe);
 
           newPosition = ir("move", opx, opy, opz, opf);
           irs.push(newPosition);
@@ -235,13 +235,15 @@ function basicVis(irs: IR[]) {
   let currentPos = new THREE.Vector3();
   irs.forEach(function (ir) {
     let newPos = new THREE.Vector3(
-      ir.args.x,
-      ir.args.y,
-      ir.args.z
+      ir.args.x || currentPos.x,
+      ir.args.y || currentPos.y,
+      ir.args.z || currentPos.z
     );
     let moveCurve = new THREE.LineCurve3(currentPos, newPos);
     moveCurves.push(moveCurve);
     currentPos = newPos;
   });
-  return moveCurves;
+  let group = new THREE.Group();
+  moveCurves.forEach(curve => group.add(curve));
+  return group;
 }

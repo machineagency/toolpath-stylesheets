@@ -13,10 +13,10 @@ export type Operation = "move";
 export interface IR {
     op: Operation;
     args: {
-        x: number | undefined;
-        y: number | undefined;
-        z: number | undefined;
-        f: number | undefined;
+        x: number | null;
+        y: number | null;
+        z: number | null;
+        f: number | null;
     }
 };
 
