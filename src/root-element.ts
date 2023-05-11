@@ -46,7 +46,10 @@ export class RootElement extends LitElement {
         // TODO
         let lowered = this.lowerGCode(this.currentToolpath);
         let myViz = basicVis(lowered);
-        console.log(myViz);
+        if (this.visualizationSpace) {
+            this.visualizationSpace.removeAllViz();
+            this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+        }
     }
 
     maybeHighlightToolpath(name: ToolpathName) {
@@ -243,7 +246,12 @@ function basicVis(irs: IR[]) {
     moveCurves.push(moveCurve);
     currentPos = newPos;
   });
+  let lines = moveCurves.map(curve => {
+      let geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(50));
+      let material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+      return new THREE.Line(geometry, material);
+  });
   let group = new THREE.Group();
-  moveCurves.forEach(curve => group.add(curve));
+  lines.forEach(line => group.add(line));
   return group;
 }
