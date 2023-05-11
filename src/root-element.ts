@@ -113,13 +113,13 @@ export class RootElement extends LitElement {
             width: 750px;
         }
         .menu {
-            border: 1px solid black;
+            border: 1px solid white;
             margin: 5px;
             width: 275px;
         }
         .list {
             max-height: 250px;
-            border: 1px solid black;
+            border: 1px solid white;
             overflow-y: scroll;
             padding-left: 5px;
             margin: 5px;
@@ -130,9 +130,10 @@ export class RootElement extends LitElement {
         }
         .list li:hover {
             background-color: gray;
+            color: black;
         }
         .preview {
-            border: 1px solid black;
+            border: 1px solid white;
             margin: 5px;
             height: 200px;
             overflow-y: scroll;
@@ -144,8 +145,8 @@ export class RootElement extends LitElement {
             list-style-type: none;
         }
         .highlight {
-            background-color: black;
-            color: white;
+            background-color: white;
+            color: black;
         }
         .menu-head {
             margin: 10px;
@@ -154,7 +155,7 @@ export class RootElement extends LitElement {
             margin: 5px;
         }
         #canvas-container canvas {
-            border: 1px solid black;
+            border: 1px solid white;
         }
     `;
 }

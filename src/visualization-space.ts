@@ -77,7 +77,7 @@ export class VisualizationSpace {
     initScene() {
         let scene = new THREE.Scene();
         // scene.background = new THREE.Color(0x23241f);
-        scene.background = new THREE.Color(0xffffff);
+        scene.background = new THREE.Color(0x242424);
         let topDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
         let leftDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.50);
         let rightDirectionalLight = new THREE.DirectionalLight(0xffffff, 0.25);
@@ -163,12 +163,11 @@ export class VisualizationSpace {
             height: 17,
             length: 218
         };
-        let black = 0x000000;
         let boxGeom = new THREE.BoxGeometry(dimensions.width,
                     dimensions.height, dimensions.length, 2, 2, 2);
         let edgesGeom = new THREE.EdgesGeometry(boxGeom);
         let material = new THREE.LineDashedMaterial({
-            color : black,
+            color : 0xffffff,
             linewidth: 1,
             scale: 1,
             dashSize: 3,
