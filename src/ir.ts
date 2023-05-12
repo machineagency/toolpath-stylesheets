@@ -1,11 +1,13 @@
 import { Toolpath, Instruction, Operation, IR } from './type-utils.ts';
 
+type Units = "mm" | "in";
+
 export function ir(operation: Operation,
     x: number | null,
     y: number | null,
     z: number | null,
     f: number | null,
-    units: string | null): IR {
+    units: Units | null): IR {
     return {
         op: operation,
         args: {
@@ -49,7 +51,7 @@ export function lowerGCode(gcodeTp: Toolpath) {
       }
 
       let newPosition;
-      let units = null;
+      let units: Units | null = null;
       let opcode = findOpcode(instruction, opcodeRe);
       if (opcode === "G21") {
         units = "mm";
