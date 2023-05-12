@@ -1,12 +1,11 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { Toolpath, Instruction, Operation, IR } from './type-utils.ts';
+import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
-
-import * as THREE from 'three';
+import { lowerGCode, lowerSBP} from './ir.ts';
 
 @customElement('root-element')
 export class RootElement extends LitElement {
@@ -44,11 +43,20 @@ export class RootElement extends LitElement {
 
     renderTSS() {
         // TODO
-        let lowered = this.lowerGCode(this.currentToolpath);
-        let myViz = basicVis(lowered);
-        if (this.visualizationSpace) {
-            this.visualizationSpace.removeAllViz();
-            this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+        if (this.currentToolpath.isa === 'sbp') {
+            let lowered = lowerSBP(this.currentToolpath);
+            let myViz = this.currentTSS(lowered);
+            if (this.visualizationSpace) {
+                this.visualizationSpace.removeAllViz();
+                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+            }
+        } else {
+            let lowered = lowerGCode(this.currentToolpath);
+            let myViz = this.currentTSS(lowered);
+            if (this.visualizationSpace) {
+                this.visualizationSpace.removeAllViz();
+                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+            }
         }
     }
 
@@ -71,7 +79,7 @@ export class RootElement extends LitElement {
                                 return html`
                                     <li @click=${() => this.onToolpathClick(name)}
                                         class=${this.maybeHighlightToolpath(name)}>
-                                        ${name}</li>
+                                        ${name + ' (' + exampleToolpaths[name].isa + ')'}</li>
                                 `;
                             })}
                         </ul>
@@ -107,53 +115,11 @@ export class RootElement extends LitElement {
         let canvasContainer = this.renderRoot.querySelector('#canvas-container') as HTMLDivElement;
         if (canvasContainer) {
             this.visualizationSpace = new VisualizationSpace(canvasContainer);
+            this.renderTSS();
         }
         else {
             console.error('Could not load the visualization space.');
         }
-    }
-
-    lowerGCode(gcodeTp: Toolpath) {
-      let irs: IR[] = [];
-
-      let opcodeRe = /(G[0-9]+|M[0-9]+)/;
-      let opXRe = /X(-?[0-9]+.[0-9]+)/;
-      let opYRe = /Y(-?[0-9]+.[0-9]+)/;
-      let opZRe = /Z(-?[0-9]+.[0-9]+)/;
-      let opFRe = /F(-?[0-9]+.[0-9]+)/;
-      let findOpcode = (instruction: Instruction, argRe: RegExp) => {
-        let maybeArgResults = instruction.match(argRe);
-        if (!maybeArgResults) {
-          return "";
-        }
-        return maybeArgResults[0];
-      };
-      let findArg = (instruction: Instruction, argRe: RegExp) => {
-        let maybeArgResults = instruction.match(argRe);
-        if (!maybeArgResults || maybeArgResults.length < 2) {
-          return null;
-        }
-        return parseFloat(maybeArgResults[1]) || null;
-      };
-
-      gcodeTp.instructions.forEach(function (instruction: Instruction) {
-        if (!instruction || instruction[0] == "''") {
-          return;
-        }
-
-        let newPosition;
-        let opcode = findOpcode(instruction, opcodeRe);
-        if (opcode === "G0" || opcode === "G1") {
-          let opx = findArg(instruction, opXRe);
-          let opy = findArg(instruction, opYRe);
-          let opz = findArg(instruction, opZRe);
-          let opf = findArg(instruction, opFRe);
-
-          newPosition = ir("move", opx, opy, opz, opf);
-          irs.push(newPosition);
-        }
-      });
-      return irs;
     }
 
     static styles = css`
@@ -216,43 +182,4 @@ declare global {
   interface HTMLElementTagNameMap {
     'root-element': RootElement;
   }
-}
-
-function ir(operation: Operation,
-            x: number | null,
-            y: number | null,
-            z: number | null,
-            f: number | null): IR {
-    return {
-        op: operation,
-        args: {
-            x: x,
-            y: y,
-            z: z,
-            f: f
-        }
-    }
-}
-
-function basicVis(irs: IR[]) {
-  let moveCurves: THREE.LineCurve3[] = [];
-  let currentPos = new THREE.Vector3();
-  irs.forEach(function (ir) {
-    let newPos = new THREE.Vector3(
-      ir.args.x || currentPos.x,
-      ir.args.y || currentPos.y,
-      ir.args.z || currentPos.z
-    );
-    let moveCurve = new THREE.LineCurve3(currentPos, newPos);
-    moveCurves.push(moveCurve);
-    currentPos = newPos;
-  });
-  let lines = moveCurves.map(curve => {
-      let geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(50));
-      let material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-      return new THREE.Line(geometry, material);
-  });
-  let group = new THREE.Group();
-  lines.forEach(line => group.add(line));
-  return group;
 }
