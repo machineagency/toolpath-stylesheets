@@ -17,6 +17,9 @@ export interface IR {
         y: number | null;
         z: number | null;
         f: number | null;
+    }, 
+    state: {
+        units: string | null;
     }
 };
 

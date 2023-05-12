@@ -4,7 +4,8 @@ export function ir(operation: Operation,
     x: number | null,
     y: number | null,
     z: number | null,
-    f: number | null): IR {
+    f: number | null,
+    units: string | null): IR {
     return {
         op: operation,
         args: {
@@ -12,6 +13,9 @@ export function ir(operation: Operation,
             y: y,
             z: z,
             f: f
+        },
+        state: {
+            units: units
         }
     }
 }
@@ -45,14 +49,18 @@ export function lowerGCode(gcodeTp: Toolpath) {
       }
 
       let newPosition;
+      let units = null;
       let opcode = findOpcode(instruction, opcodeRe);
+      if (opcode === "G21") {
+        units = "mm";
+      }
       if (opcode === "G0" || opcode === "G1") {
         let opx = findArg(instruction, opXRe);
         let opy = findArg(instruction, opYRe);
         let opz = findArg(instruction, opZRe);
         let opf = findArg(instruction, opFRe);
 
-        newPosition = ir("move", opx, opy, opz, opf);
+        newPosition = ir("move", opx, opy, opz, opf, units);
         irs.push(newPosition);
       }
     });
@@ -72,16 +80,16 @@ export function lowerSBP(sbpTp: Toolpath) {
         let opcode = tokens[0];
         if (opcode === "M2" || opcode === "J2") {
             newPosition = ir("move", parseFloat(tokens[1]), 
-                             parseFloat(tokens[2]), 0, null);
+                             parseFloat(tokens[2]), 0, null, null);
         } else if (opcode === "M3" || opcode === "J3") {
             newPosition = ir("move", parseFloat(tokens[1]), parseFloat(tokens[2]),
-                             parseFloat(tokens[3]), null);
+                             parseFloat(tokens[3]), null, null);
         } else if (opcode === "MZ" || opcode === "JZ") {
-            newPosition = ir("move", 0, 0, parseFloat(tokens[1]), null);
+            newPosition = ir("move", 0, 0, parseFloat(tokens[1]), null, null);
         } else if (opcode === "MX" || opcode === "JX") {
-            newPosition = ir("move", parseFloat(tokens[1]), 0, 0, null);
+            newPosition = ir("move", parseFloat(tokens[1]), 0, 0, null, null);
         } else if (opcode === "MY" || opcode === "JY") {
-            newPosition = ir("move", 0, parseFloat(tokens[1]), 0, null);
+            newPosition = ir("move", 0, parseFloat(tokens[1]), 0, null, null);
         } else {
             return;
         }
@@ -98,12 +106,14 @@ export function lowerEBB(ebbTp: Toolpath) {
         let y = -0.5 * (aSteps - bSteps);
         // change this?
         let stepsPerMm = 80;
-        let newX = x / stepsPerMm;
-        let newY = y / stepsPerMm;
-        return {newX, newY};
+        let xChange = x / stepsPerMm;
+        let yChange = y / stepsPerMm;
+        return {xChange, yChange};
     };
 
     let toolOnBed = false;
+    let currX = 0;
+    let currY = 0;
     ebbTp.instructions.forEach(function (instruction: Instruction) {
         let newPosition;
         let tokens, opcode, penValue, aSteps, bSteps, xyChange;
@@ -114,9 +124,11 @@ export function lowerEBB(ebbTp: Toolpath) {
             bSteps = parseInt(tokens[3]);
             xyChange = getXyMmChangeFromABSteps(aSteps, bSteps);
             if (toolOnBed) {
-                newPosition = ir("move", xyChange.newX, xyChange.newY, 0, null);
+                newPosition = ir("move", xyChange.xChange + currX, xyChange.yChange + currY, 0, null, null);
                 irs.push(newPosition);
             }
+            currX += xyChange.xChange;
+            currY += xyChange.yChange;
         }
         if (opcode === 'SP') {
             penValue = parseInt(tokens[1]);
