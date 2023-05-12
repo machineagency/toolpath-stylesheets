@@ -5,7 +5,7 @@ import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
-import { lowerGCode, lowerSBP} from './ir.ts';
+import { lowerGCode, lowerSBP, lowerEBB } from './ir.ts';
 
 @customElement('root-element')
 export class RootElement extends LitElement {
@@ -50,8 +50,15 @@ export class RootElement extends LitElement {
                 this.visualizationSpace.removeAllViz();
                 this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
             }
-        } else {
+        } else if (this.currentToolpath.isa === 'gcode') {
             let lowered = lowerGCode(this.currentToolpath);
+            let myViz = this.currentTSS(lowered);
+            if (this.visualizationSpace) {
+                this.visualizationSpace.removeAllViz();
+                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+            }
+        } else {
+            let lowered = lowerEBB(this.currentToolpath);
             let myViz = this.currentTSS(lowered);
             if (this.visualizationSpace) {
                 this.visualizationSpace.removeAllViz();

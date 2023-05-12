@@ -90,7 +90,39 @@ export function lowerSBP(sbpTp: Toolpath) {
     return irs;
 }
 
-/*lowerEBB(ebbTp: Toolpath) {
+export function lowerEBB(ebbTp: Toolpath) {
     let irs: IR[] = [];
 
-}*/
+    let getXyMmChangeFromABSteps = (aSteps: number, bSteps: number) => {
+        let x = 0.5 * (aSteps + bSteps);
+        let y = -0.5 * (aSteps - bSteps);
+        // change this?
+        let stepsPerMm = 80;
+        let newX = x / stepsPerMm;
+        let newY = y / stepsPerMm;
+        return {newX, newY};
+    };
+
+    let toolOnBed = false;
+    ebbTp.instructions.forEach(function (instruction: Instruction) {
+        let newPosition;
+        let tokens, opcode, penValue, aSteps, bSteps, xyChange;
+        tokens = instruction.split(',');
+        opcode = tokens[0];
+        if (opcode === 'SM') {
+            aSteps = parseInt(tokens[2]);
+            bSteps = parseInt(tokens[3]);
+            xyChange = getXyMmChangeFromABSteps(aSteps, bSteps);
+            if (toolOnBed) {
+                newPosition = ir("move", xyChange.newX, xyChange.newY, 0, null);
+                irs.push(newPosition);
+            }
+        }
+        if (opcode === 'SP') {
+            penValue = parseInt(tokens[1]);
+            toolOnBed = penValue === 0;
+        }
+    });
+
+    return irs;
+}
