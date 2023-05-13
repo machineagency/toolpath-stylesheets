@@ -52,6 +52,9 @@ function basicVis(irs: IR[]) {
     });
     let group = new THREE.Group();
     lines.forEach(line => group.add(line));
+    if (irs[0].state.units === 'in') {
+        group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
+    }
     group.rotateX(Math.PI / 2);
     return group;
 }
@@ -100,6 +103,9 @@ function distanceFromOriginVis(irs: IR[]) {
         group.add(line);
     });
     group.rotateX(Math.PI / 2);
+    if (irs[0].state.units === 'in') {
+        group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
+    }
     return group;
 }
 
@@ -154,6 +160,9 @@ function distanceTraveledVis(irs: IR[]) {
         group.add(line);
     });
     group.rotateX(Math.PI / 2);
+    if (irs[0].state.units === 'in') {
+        group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
+    }
     return group;
   }
   

@@ -45,16 +45,18 @@ export function lowerGCode(gcodeTp: Toolpath) {
       return parseFloat(maybeArgResults[1]) || null;
     };
 
+    let units: Units | null = null;
     gcodeTp.instructions.forEach(function (instruction: Instruction) {
       if (!instruction || instruction[0] == "''") {
         return;
       }
 
       let newPosition;
-      let units: Units | null = null;
       let opcode = findOpcode(instruction, opcodeRe);
       if (opcode === "G21") {
         units = "mm";
+      } else if (opcode === "G20") {
+        units = "in";
       }
       if (opcode === "G0" || opcode === "G1") {
         let opx = findArg(instruction, opXRe);
