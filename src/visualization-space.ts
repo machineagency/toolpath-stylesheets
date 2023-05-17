@@ -100,7 +100,7 @@ export class VisualizationSpace {
               720 / 2,
               480 / 2,
               -480 / 2,
-              1,
+              0.1,
               10000
             );
             camera.up = new THREE.Vector3(0, -1, 0);
