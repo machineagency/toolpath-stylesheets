@@ -20,6 +20,7 @@ export interface IR {
     }, 
     state: {
         units: string | null;
+        toolOnBed: boolean;
     }
 };
 

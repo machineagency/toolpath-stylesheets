@@ -3,14 +3,13 @@ import * as THREE from 'three';
 import { IR } from './type-utils.ts';
 
 export type TSS = (tp: IR[]) => THREE.Group;
-export type TSSName = 'tssA' | 'tssB' | 'tssC' | 'basicVis' | 'distanceFromOriginVis' | 
+export type TSSName = 'tssA' | 'tssB' | 'tssC' | 'basicVis' |
                       'distanceTraveledVis';
 
 export type TSSCollection = Record<TSSName, TSS>
 
 export const tssCollection: TSSCollection = {
     basicVis: basicVis,
-    distanceFromOriginVis: distanceFromOriginVis,
     distanceTraveledVis: distanceTraveledVis,
     tssA: tssA,
     tssB: tssB,
@@ -35,21 +34,38 @@ function tssC(tp: IR[]) {
 function basicVis(irs: IR[]) {
     let moveCurves: THREE.LineCurve3[] = [];
     let currentPos = new THREE.Vector3();
+    let previousPos = new THREE.Vector3();
+    let isOnBed = false;
+
     irs.forEach(function (ir) {
       let newPos = new THREE.Vector3(
         ir.args.x || currentPos.x,
         ir.args.y || currentPos.y,
         ir.args.z || currentPos.z
       );
-      let moveCurve = new THREE.LineCurve3(currentPos, newPos);
-      moveCurves.push(moveCurve);
+
+      if (isOnBed && ir.state.toolOnBed) {
+        if (currentPos.distanceTo(previousPos) > Number.EPSILON) {
+            let moveCurve = new THREE.LineCurve3(currentPos, newPos);
+            moveCurves.push(moveCurve);
+        }
+      }
+      // starts new line segment when transitioning from on and off bed
+      if (!isOnBed && ir.state.toolOnBed) {
+        currentPos = newPos;
+      }
+
+      isOnBed = ir.state.toolOnBed || false;
+      previousPos = currentPos;
       currentPos = newPos;
     });
+
     let lines = moveCurves.map(curve => {
         let geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(50));
         let material = new THREE.LineBasicMaterial({ color: 0xff0000 });
         return new THREE.Line(geometry, material);
     });
+
     let group = new THREE.Group();
     lines.forEach(line => group.add(line));
     if (irs[0].state.units === 'in') {
@@ -59,6 +75,7 @@ function basicVis(irs: IR[]) {
     return group;
 }
 
+/*
 function distanceFromOriginVis(irs: IR[]) {
     let moveCurves: THREE.LineCurve3[] = [];
     let currentPos = new THREE.Vector3();
@@ -108,19 +125,37 @@ function distanceFromOriginVis(irs: IR[]) {
     }
     return group;
 }
+*/
 
 function distanceTraveledVis(irs: IR[]) {
     let moveCurves: THREE.LineCurve3[] = [];
     let currentPos = new THREE.Vector3();
+    let previousPos = new THREE.Vector3();
+    let isOnBed = false;
+    let totalLength = 0;
+
     irs.forEach(function (ir) {
-        let newPos = new THREE.Vector3(
-            ir.args.x || currentPos.x,
-            ir.args.y || currentPos.y,
-            ir.args.z || currentPos.z
-        );
-        let moveCurve = new THREE.LineCurve3(currentPos, newPos);
-        moveCurves.push(moveCurve);
+      let newPos = new THREE.Vector3(
+        ir.args.x || currentPos.x,
+        ir.args.y || currentPos.y,
+        ir.args.z || currentPos.z
+      );
+      let moveCurve = new THREE.LineCurve3(currentPos, newPos);
+      totalLength += moveCurve.getLength();
+
+      if (isOnBed && ir.state.toolOnBed) {
+        if (currentPos.distanceTo(previousPos) > Number.EPSILON) {
+            moveCurves.push(moveCurve);
+        }
+      }
+      // starts new line segment when transitioning from on and off bed
+      if (!isOnBed && ir.state.toolOnBed) {
         currentPos = newPos;
+      }
+
+      isOnBed = ir.state.toolOnBed || false;
+      previousPos = currentPos;
+      currentPos = newPos;
     });
 
     let lines = moveCurves.map(curve => {
@@ -130,13 +165,8 @@ function distanceTraveledVis(irs: IR[]) {
     });
 
     let group = new THREE.Group();
-
-    let totalLength = 0;
-    moveCurves.forEach(curve => {
-        totalLength += curve.getLength();
-    });
-
     let distance = 0;
+
     lines.forEach((line) => {
         let points= line.geometry.attributes.position.array;
         let colors = [];
@@ -159,6 +189,7 @@ function distanceTraveledVis(irs: IR[]) {
 
         group.add(line);
     });
+
     group.rotateX(Math.PI / 2);
     if (irs[0].state.units === 'in') {
         group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
