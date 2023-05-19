@@ -1,7 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { Toolpath } from './type-utils.ts';
+import { Toolpath, Renderer } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
@@ -39,6 +39,14 @@ export class RootElement extends LitElement {
             this.currentTSSName = newName;
             this.currentTSS = tssCollection[newName];
         };
+    }
+
+    onRendererChange(rendererType: Renderer) {
+        if (rendererType === 'svg') {
+
+        } else if (rendererType === 'webgl') {
+            
+        }
     }
 
     renderTSS() {
@@ -107,6 +115,19 @@ export class RootElement extends LitElement {
                                 `;
                             })}
                         </ul>
+                    </div>
+                    <div class="menu">
+                        <div class="menu-head">Renderer Toggle</div>
+                        <label>
+                            <input type="radio" name="renderer" value="svg"
+                            @change=${() => this.onRendererChange("svg")}>
+                            SVG Renderer
+                        </label>
+                        <label>
+                            <input type="radio" name="renderer" value="webgl"
+                            @change=${() => this.onRendererChange("webgl")}>
+                            WebGL Renderer
+                        </label>
                     </div>
                 </div>
                 <div class="visualization-pane-col">
