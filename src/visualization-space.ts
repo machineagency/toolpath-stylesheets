@@ -1,17 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
-// NOTE: Thrisha uncomment below as needed
 // import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
-
-interface Envelope extends THREE.Group {
-    dimensions: {
-        width: number;
-        length: number;
-        height: number;
-    };
-    center: THREE.Vector3;
-};
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
@@ -19,7 +8,7 @@ export class VisualizationSpace {
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
     protected threeRenderer?: THREE.Renderer;
-    protected envelopeGroup: Envelope;
+    protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
     protected renderRequested: boolean;
 
@@ -30,7 +19,7 @@ export class VisualizationSpace {
         this.vizGroup = new THREE.Group();
         this.scene.add(this.envelopeGroup);
         this.scene.add(this.vizGroup);
-        this.camera = this.initCamera(true);
+        this.camera = this.initCamera(this.envelopeGroup.position, true);
         this.renderRequested = false;
         this.initPostDomLoadLogistics();
         // For debugging
@@ -103,7 +92,7 @@ export class VisualizationSpace {
         return scene;
     }
 
-    initCamera(isOrtho: boolean) {
+    initCamera(centerPoint: THREE.Vector3, isOrtho: boolean) {
         let camera;
         let aspect = window.innerWidth / window.innerHeight;
         if (isOrtho) {
@@ -112,18 +101,20 @@ export class VisualizationSpace {
               720 / 2,
               480 / 2,
               -480 / 2,
-              0.1,
+              1,
               10000
             );
             camera.up = new THREE.Vector3(0, -1, 0);
             camera.zoom = 2;
             camera.updateProjectionMatrix();
-            camera.position.set(-100, -100, -100);
+            camera.position.set(-50, -50, -50);
+            camera.lookAt(centerPoint);
             camera.updateProjectionMatrix();
         }
         else {
             let fov = 50;
             camera = new THREE.PerspectiveCamera(fov, aspect, 0.01, 30000);
+            camera.lookAt(centerPoint);
             camera.position.set(-500, 500, 500);
             camera.updateProjectionMatrix();
         }
@@ -167,7 +158,7 @@ export class VisualizationSpace {
         this.threeRenderer?.render(this.scene, this.camera);
     }
 
-    createEnvelopeGroup() : Envelope {
+    createEnvelopeGroup() : THREE.Group {
         let dimensions = {
             width: 300,
             height: 17,
@@ -185,16 +176,12 @@ export class VisualizationSpace {
         });
         let mesh = new THREE.LineSegments(edgesGeom, material);
         mesh.computeLineDistances();
-        let envelopeGroup = new THREE.Group() as Envelope;
+        let envelopeGroup = new THREE.Group();
         envelopeGroup.add(mesh);
         envelopeGroup.position.set(
             dimensions.width / 2,
             dimensions.height / 2,
             dimensions.length / 2
-        );
-        envelopeGroup.dimensions = dimensions;
-        envelopeGroup.center = envelopeGroup.position.clone().add(
-            new THREE.Vector3(-dimensions.width / 2, 0, -dimensions.length / 2)
         );
         return envelopeGroup;
     }

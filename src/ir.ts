@@ -33,42 +33,42 @@ export function lowerGCode(gcodeTp: Toolpath) {
     let opZRe = /Z(-?[0-9]+.[0-9]+)/;
     let opFRe = /F(-?[0-9]+.[0-9]+)/;
     let findOpcode = (instruction: Instruction, argRe: RegExp) => {
-      let maybeArgResults = instruction.match(argRe);
-      if (!maybeArgResults) {
-        return "";
-      }
-      return maybeArgResults[0];
+        let maybeArgResults = instruction.match(argRe);
+        if (!maybeArgResults) {
+            return "";
+        }
+        return maybeArgResults[0];
     };
     let findArg = (instruction: Instruction, argRe: RegExp) => {
-      let maybeArgResults = instruction.match(argRe);
-      if (!maybeArgResults || maybeArgResults.length < 2) {
-        return null;
-      }
-      return parseFloat(maybeArgResults[1]) || null;
+        let maybeArgResults = instruction.match(argRe);
+        if (!maybeArgResults || maybeArgResults.length < 2) {
+            return null;
+        }
+        return parseFloat(maybeArgResults[1]) || null;
     };
 
     let units: Units | null = null;
     gcodeTp.instructions.forEach(function (instruction: Instruction) {
-      if (!instruction || instruction[0] == "''") {
-        return;
-      }
+        if (!instruction || instruction[0] == "''") {
+            return;
+        }
 
-      let newPosition;
-      let opcode = findOpcode(instruction, opcodeRe);
-      if (opcode === "G21") {
-        units = "mm";
-      } else if (opcode === "G20") {
-        units = "in";
-      }
-      if (opcode === "G0" || opcode === "G1") {
-        let opx = findArg(instruction, opXRe);
-        let opy = findArg(instruction, opYRe);
-        let opz = findArg(instruction, opZRe);
-        let opf = findArg(instruction, opFRe);
+        let newPosition;
+        let opcode = findOpcode(instruction, opcodeRe);
+        if (opcode === "G21") {
+            units = "mm";
+        } else if (opcode === "G20") {
+            units = "in";
+        }
+        if (opcode === "G0" || opcode === "G1") {
+            let opx = findArg(instruction, opXRe);
+            let opy = findArg(instruction, opYRe);
+            let opz = findArg(instruction, opZRe);
+            let opf = findArg(instruction, opFRe);
 
-        newPosition = ir("move", opx, opy, opz, opf, units, true);
-        irs.push(newPosition);
-      }
+            newPosition = ir("move", opx, opy, opz, opf, units, true);
+            irs.push(newPosition);
+        }
     });
     return irs;
 }
@@ -108,12 +108,12 @@ export function lowerEBB(ebbTp: Toolpath) {
     let irs: IR[] = [];
   
     let getXyMmChangeFromABSteps = (aSteps: number, bSteps: number) => {
-      let x = 0.5 * (aSteps + bSteps);
-      let y = -0.5 * (aSteps - bSteps);
-      let stepsPerMm = 80;
-      let xChange = x / stepsPerMm;
-      let yChange = y / stepsPerMm;
-      return { xChange, yChange };
+        let x = 0.5 * (aSteps + bSteps);
+        let y = -0.5 * (aSteps - bSteps);
+        let stepsPerMm = 80;
+        let xChange = x / stepsPerMm;
+        let yChange = y / stepsPerMm;
+        return { xChange, yChange };
     };
   
     let currX = 0;
@@ -122,27 +122,27 @@ export function lowerEBB(ebbTp: Toolpath) {
     let prevToolOnBed = false;
   
     ebbTp.instructions.forEach(function (instruction: Instruction) {
-      let newPosition;
-      let tokens, opcode, penValue, aSteps, bSteps, xyChange;
-      tokens = instruction.split(',');
-      opcode = tokens[0];
-  
-      if (opcode === 'SM') {
-        aSteps = parseInt(tokens[2]);
-        bSteps = parseInt(tokens[3]);
-        xyChange = getXyMmChangeFromABSteps(aSteps, bSteps);
-        newPosition = ir('move', currX + xyChange.xChange, currY + xyChange.yChange, currZ, null, null, prevToolOnBed);
-        irs.push(newPosition);
-        currX += xyChange.xChange;
-        currY += xyChange.yChange;
-      }
-      if (opcode === 'SP') {
-        penValue = parseInt(tokens[1]);
-        let toolOnBed = penValue === 0;
-        newPosition = ir('move', currX, currY, currZ, null, null, toolOnBed);
-        irs.push(newPosition);
-        prevToolOnBed = toolOnBed;
-      }
+        let newPosition;
+        let tokens, opcode, penValue, aSteps, bSteps, xyChange;
+        tokens = instruction.split(',');
+        opcode = tokens[0];
+
+        if (opcode === 'SM') {
+            aSteps = parseInt(tokens[2]);
+            bSteps = parseInt(tokens[3]);
+            xyChange = getXyMmChangeFromABSteps(aSteps, bSteps);
+            newPosition = ir('move', currX + xyChange.xChange, currY + xyChange.yChange, currZ, null, null, prevToolOnBed);
+            irs.push(newPosition);
+            currX += xyChange.xChange;
+            currY += xyChange.yChange;
+        }
+        if (opcode === 'SP') {
+            penValue = parseInt(tokens[1]);
+            let toolOnBed = penValue === 0;
+            newPosition = ir('move', currX, currY, currZ, null, null, toolOnBed);
+            irs.push(newPosition);
+            prevToolOnBed = toolOnBed;
+        }
     });
   
     return irs;
