@@ -39,6 +39,7 @@ export class RootElement extends LitElement {
             this.currentTSSName = newName;
             this.currentTSS = tssCollection[newName];
         };
+        this.renderTSS();
     }
 
     onRendererChange(rendererType: Renderer) {
