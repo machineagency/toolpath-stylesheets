@@ -45,10 +45,15 @@ export class RootElement extends LitElement {
     // function to change renderers from SVG to WebGL
     onRendererChange(rendererType: Renderer) {
         if (rendererType === 'svg') {
-            this.visualizationSpace?.computeOverheadView();
+            //this.visualizationSpace?.computeOverheadView();
         } else if (rendererType === 'webgl') {
             //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
         }
+    }
+
+    // positions the camera to overhead view
+    onPositionImage() {
+        this.visualizationSpace?.computeOverheadView();
     }
 
     // takes picture of the current visualization space
@@ -158,6 +163,14 @@ export class RootElement extends LitElement {
                             <input type="radio" name="renderer" value="webgl"
                             @change=${() => this.onRendererChange("webgl")}>
                             WebGL Renderer
+                        </label>
+                    </div>
+
+                    <div class="menu">
+                        <div class="menu-head">Position Image</div>
+                        <label>
+                            <input type="button" name="Position Image" value="Overhead View"
+                            @click=${() => this.onPositionImage()}>
                         </label>
                     </div>
 
