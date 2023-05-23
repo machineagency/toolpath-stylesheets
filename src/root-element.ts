@@ -60,29 +60,25 @@ export class RootElement extends LitElement {
     onSnapshotClick() {
         this.renderTSS();
         let canvas = this.renderRoot.querySelector('#canvas-container canvas') as HTMLCanvasElement;
-        // code for downloading the images
-        /*
-        // set up canvas dimensions
-        let context = canvas.getContext('2d');
-        let width = canvas.clientWidth;
-        let height = canvas.clientHeight;
-
-        context?.drawImage(canvas, 0, 0, width, height);
-
-        let dataURL = canvas.toDataURL('image/png');
-        let link = document.createElement('a');
-        link.href = dataURL;
-        link.download = 'snapshot.png';
-        link.click();
-        */
-
         let image = new Image();
         image.src = canvas.toDataURL('image/png');
         image.style.maxWidth = '100%';
         image.style.maxHeight = '100%';
         image.classList.add('image-with-border');
+
+        image.addEventListener('click', () => {
+            this.handleImageInteraction(image.src);
+        })
         let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
         cameraRollContainer?.appendChild(image);
+    }
+
+    // downloads images upon user clicking on them
+    handleImageInteraction(imageSrc: string) {
+        let link = document.createElement('a');
+        link.href = imageSrc;
+        link.download = 'snapshot/png';
+        link.click();
     }
 
     renderTSS() {
