@@ -118,6 +118,13 @@ export class VisualizationSpace {
             camera.position.set(-500, 500, 500);
             camera.updateProjectionMatrix();
         }
+        // save the initial positions
+        /*
+        let initPos = camera.position.clone();
+        let initZoom = camera.zoom;
+        let initUp = camera.up;
+        let init
+        */
         return camera;
     }
 
@@ -156,6 +163,15 @@ export class VisualizationSpace {
         this.renderRequested = false;
         this.controls?.update();
         this.threeRenderer?.render(this.scene, this.camera);
+        /*
+        const canvas = this.threeRenderer?.domElement;
+        const dataURL = canvas?.toDataURL();
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'screenshot.png';
+
+        link.click();
+        */
     }
 
     createEnvelopeGroup() : THREE.Group {
@@ -186,13 +202,41 @@ export class VisualizationSpace {
         return envelopeGroup;
     }
 
+    // sets up the camera perspective so that it is looking straight down
     computeOverheadView() {
-        // TODO
+        if (this.camera instanceof THREE.PerspectiveCamera) {
+            const perspectiveCamera = this.camera as THREE.PerspectiveCamera;
+            perspectiveCamera.position.set(0, 1000, 0);
+            perspectiveCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            perspectiveCamera.rotation.x = Math.PI / 2;
+            perspectiveCamera.fov = 4.5;
+            perspectiveCamera.updateProjectionMatrix();
+        } else if (this.camera instanceof THREE.OrthographicCamera) {
+            const orthographicCamera = this.camera as THREE.OrthographicCamera;
+            orthographicCamera.position.set(0, 1000, 0);
+            orthographicCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            orthographicCamera.rotation.x = Math.PI / 2;
+            orthographicCamera.zoom = 2.2;
+            orthographicCamera.updateProjectionMatrix();
+        }
+        this.requestRenderScene();
     }
 
     computeARScene() {
         // TODO
     }
+
+    /*
+    takeSnapShot() {
+        this.requestRenderScene();
+        const canvas = this.threeRenderer.domElement;
+        const dataURL = canvas?.toDataURL();
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'screenshot.png';
+
+        link.click();
+    }*/
 
     toString() : string {
         return `<VS with: ${this.getCurrentVizNames()}>`;

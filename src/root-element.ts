@@ -42,16 +42,35 @@ export class RootElement extends LitElement {
         this.renderTSS();
     }
 
+    // function to change renderers from SVG to WebGL
     onRendererChange(rendererType: Renderer) {
         if (rendererType === 'svg') {
-
+            this.visualizationSpace?.computeOverheadView();
         } else if (rendererType === 'webgl') {
-            
+            //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
         }
     }
 
+    // takes picture of the current visualization space
+    onSnapshotClick() {
+        this.renderTSS();
+        let canvas = this.renderRoot.querySelector('#canvas-container canvas') as HTMLCanvasElement;
+        let context = canvas.getContext('2d');
+
+        // set up canvas dimensions
+        let width = canvas.clientWidth;
+        let height = canvas.clientHeight;
+
+        context?.drawImage(canvas, 0, 0, width, height);
+
+        let dataURL = canvas.toDataURL('image/png');
+        let link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'snapshot.png';
+        link.click();
+    }
+
     renderTSS() {
-        // TODO
         if (this.currentToolpath.isa === 'sbp') {
             let lowered = lowerSBP(this.currentToolpath);
             let myViz = this.currentTSS(lowered);
@@ -117,6 +136,7 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                     </div>
+
                     <div class="menu">
                         <div class="menu-head">Renderer Toggle</div>
                         <label>
@@ -130,9 +150,19 @@ export class RootElement extends LitElement {
                             WebGL Renderer
                         </label>
                     </div>
+
+                    <div class="menu">
+                        <div class="menu-head">Capture Image</div>
+                        <label>
+                            <input type="button" name="Capture Image" value="Take snapshot"
+                            @click=${() => this.onSnapshotClick()}>
+                        </label>
+                    </div>
+                        
                 </div>
                 <div class="visualization-pane-col">
                     <div id="canvas-container">
+                            
                     </div>
                 </div>
                 <!-- <debugging-pane></debugging-pane> -->
