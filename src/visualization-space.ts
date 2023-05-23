@@ -206,16 +206,16 @@ export class VisualizationSpace {
     computeOverheadView() {
         if (this.camera instanceof THREE.PerspectiveCamera) {
             const perspectiveCamera = this.camera as THREE.PerspectiveCamera;
-            perspectiveCamera.position.set(0, 1000, 0);
+            perspectiveCamera.position.set(0, -1000, 0);
             perspectiveCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
-            perspectiveCamera.rotation.x = Math.PI / 2;
+            perspectiveCamera.up.set(0, 1, 0);
             perspectiveCamera.fov = 4.5;
             perspectiveCamera.updateProjectionMatrix();
         } else if (this.camera instanceof THREE.OrthographicCamera) {
             const orthographicCamera = this.camera as THREE.OrthographicCamera;
-            orthographicCamera.position.set(0, 1000, 0);
+            orthographicCamera.position.set(0, -1000, 0);
             orthographicCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
-            orthographicCamera.rotation.x = Math.PI / 2;
+            orthographicCamera.up.set(0, 1, 0);
             orthographicCamera.zoom = 2.2;
             orthographicCamera.updateProjectionMatrix();
         }
