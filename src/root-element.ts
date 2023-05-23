@@ -26,6 +26,9 @@ export class RootElement extends LitElement {
     @property()
     currentTSS: TSS = tssCollection[this.currentTSSName];
 
+    @property()
+    cameraRollImages: string[] = [];
+
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
@@ -55,9 +58,10 @@ export class RootElement extends LitElement {
     onSnapshotClick() {
         this.renderTSS();
         let canvas = this.renderRoot.querySelector('#canvas-container canvas') as HTMLCanvasElement;
-        let context = canvas.getContext('2d');
-
+        // code for downloading the images
+        /*
         // set up canvas dimensions
+        let context = canvas.getContext('2d');
         let width = canvas.clientWidth;
         let height = canvas.clientHeight;
 
@@ -68,6 +72,15 @@ export class RootElement extends LitElement {
         link.href = dataURL;
         link.download = 'snapshot.png';
         link.click();
+        */
+
+        let image = new Image();
+        image.src = canvas.toDataURL('image/png');
+        image.style.maxWidth = '100%';
+        image.style.maxHeight = '100%';
+        image.classList.add('image-with-border');
+        let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
+        cameraRollContainer?.appendChild(image);
     }
 
     renderTSS() {
@@ -161,9 +174,8 @@ export class RootElement extends LitElement {
                         
                 </div>
                 <div class="visualization-pane-col">
-                    <div id="canvas-container">
-                            
-                    </div>
+                    <div id="canvas-container"></div>
+                    <div id="camera-roll-container"></div>
                 </div>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
@@ -231,8 +243,19 @@ export class RootElement extends LitElement {
         .visualization-pane-col {
             margin: 5px;
         }
+        .image-with-border {
+            border: 1px solid white;
+            box-sizing: border-box;
+        }
         #canvas-container canvas {
             border: 1px solid white;
+        }
+        #camera-roll-container {
+            width: 100%;
+            height: 200px;
+            border: 1px solid white;
+            overflow-x: auto;
+            white-space: nowrap;
         }
     `;
 }

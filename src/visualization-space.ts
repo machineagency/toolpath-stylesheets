@@ -163,15 +163,6 @@ export class VisualizationSpace {
         this.renderRequested = false;
         this.controls?.update();
         this.threeRenderer?.render(this.scene, this.camera);
-        /*
-        const canvas = this.threeRenderer?.domElement;
-        const dataURL = canvas?.toDataURL();
-        const link = document.createElement('a');
-        link.href = dataURL;
-        link.download = 'screenshot.png';
-
-        link.click();
-        */
     }
 
     createEnvelopeGroup() : THREE.Group {
@@ -225,18 +216,6 @@ export class VisualizationSpace {
     computeARScene() {
         // TODO
     }
-
-    /*
-    takeSnapShot() {
-        this.requestRenderScene();
-        const canvas = this.threeRenderer.domElement;
-        const dataURL = canvas?.toDataURL();
-        const link = document.createElement('a');
-        link.href = dataURL;
-        link.download = 'screenshot.png';
-
-        link.click();
-    }*/
 
     toString() : string {
         return `<VS with: ${this.getCurrentVizNames()}>`;
