@@ -26,9 +26,6 @@ export class RootElement extends LitElement {
     @property()
     currentTSS: TSS = tssCollection[this.currentTSSName];
 
-    @property()
-    cameraRollImages: string[] = [];
-
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
