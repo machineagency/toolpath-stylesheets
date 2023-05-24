@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+//import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
 // import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
 
 export class VisualizationSpace {
@@ -10,7 +11,7 @@ export class VisualizationSpace {
     protected threeRenderer?: THREE.Renderer;
     protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
-    protected renderRequested: boolean;
+    protected renderRequested: boolean; 
 
     constructor(domContainer: HTMLDivElement) {
         this.domContainer = domContainer;
@@ -118,13 +119,6 @@ export class VisualizationSpace {
             camera.position.set(-500, 500, 500);
             camera.updateProjectionMatrix();
         }
-        // save the initial positions
-        /*
-        let initPos = camera.position.clone();
-        let initZoom = camera.zoom;
-        let initUp = camera.up;
-        let init
-        */
         return camera;
     }
 
@@ -195,6 +189,10 @@ export class VisualizationSpace {
 
     // sets up the camera perspective so that it is looking straight down
     computeOverheadView() {
+        this.scene = this.initScene();
+        this.envelopeGroup = this.createEnvelopeGroup();
+        this.scene.add(this.envelopeGroup);
+        this.scene.add(this.vizGroup);
         if (this.camera instanceof THREE.PerspectiveCamera) {
             const perspectiveCamera = this.camera as THREE.PerspectiveCamera;
             perspectiveCamera.position.set(0, -1000, 0);
