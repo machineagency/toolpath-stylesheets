@@ -258,7 +258,7 @@ export class RootElement extends LitElement {
             border: 1px solid white;
         }
         #camera-roll-container {
-            width: 100%;
+            max-width: 750px;
             height: 200px;
             border: 1px solid white;
             overflow-x: auto;
