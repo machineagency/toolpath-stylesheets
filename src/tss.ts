@@ -1,15 +1,18 @@
 import * as THREE from 'three';
-
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { IR } from './type-utils.ts';
+import { drawCross } from './overlay.ts';
 
 export type TSS = (tp: IR[]) => THREE.Group;
-export type TSSName = 'basicVis' | 'distanceTraveledVis';
+export type TSSName = 'basicVis' | 'distanceTraveledVis' | 'overlay';
 
 export type TSSCollection = Record<TSSName, TSS>
 
 export const tssCollection: TSSCollection = {
     basicVis: basicVis,
-    distanceTraveledVis: distanceTraveledVis
+    distanceTraveledVis: distanceTraveledVis,
+    overlay: overlay
 };
 
 function basicVis(irs: IR[]) {
@@ -124,5 +127,23 @@ function distanceTraveledVis(irs: IR[]) {
         group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
     }
     return group;
-  }
-  
+}
+
+function overlay(irs: IR[]) {
+  let group = new THREE.Group();
+  const loader = new FontLoader();
+  loader.load('fonts.json', function (font) {
+    let text = new TextGeometry('Test text!', {
+      font: font,
+      size: 80,
+      height: 1,
+      curveSegments: 12
+    });
+    let material = new THREE.MeshPhongMaterial( {color: 0xff0000} );
+    let textMesh = new THREE.Mesh(text, material);
+    group.add(textMesh);
+    group.rotateX(Math.PI / 2);
+  });
+
+  return drawCross(5, 10);
+}

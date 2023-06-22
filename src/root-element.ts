@@ -21,7 +21,7 @@ export class RootElement extends LitElement {
     currentToolpath: Toolpath = exampleToolpaths[this.currentToolpathName];
 
     @property()
-    currentTSSName: TSSName = this.tssNames[0];
+    currentTSSName: TSSName = 'overlay';
 
     @property()
     currentTSS: TSS = tssCollection[this.currentTSSName];
