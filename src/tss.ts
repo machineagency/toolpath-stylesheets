@@ -143,6 +143,7 @@ function overlay(irs: IR[]) {
     let textMesh = new THREE.Mesh(text, material);
     group.add(textMesh);
     group.rotateX(Math.PI / 2);
+    group.rotateZ(Math.PI / 2);
   });
 
   return drawCross(5, 10);
