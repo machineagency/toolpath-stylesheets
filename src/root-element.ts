@@ -54,7 +54,6 @@ export class RootElement extends LitElement {
     // positions the camera to overhead view
     onPositionImage() {
         this.visualizationSpace?.computeOverheadView();
-        //this.renderTSS();
     }
 
     // takes picture of the current visualization space

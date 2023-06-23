@@ -131,8 +131,10 @@ function distanceTraveledVis(irs: IR[]) {
 
 function overlay() {
   let mainGroup = new THREE.Group();
-  mainGroup.add(drawCross(50, 50));
+  let cross = drawCross(50, 50); 
+  mainGroup.add(cross);
   mainGroup.add(drawArrow(100, 80, 150, 100));
   mainGroup.add(drawTextAt(100, 150, 'testing'));
+  mainGroup.remove(cross);
   return mainGroup;
 }

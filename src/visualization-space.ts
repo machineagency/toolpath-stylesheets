@@ -215,6 +215,12 @@ export class VisualizationSpace {
         // TODO
     }
 
+    /*
+    removeMark(objectToRemove: THREE.Object3D) {
+        this.scene.remove(objectToRemove);
+        this.requestRenderScene();
+    }*/
+
     toString() : string {
         return `<VS with: ${this.getCurrentVizNames()}>`;
     }
