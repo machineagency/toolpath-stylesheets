@@ -5,6 +5,7 @@ import { Toolpath, Renderer } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
+import { setVisualizationSpaceInstance } from './visualization-space-instance.ts';
 import { lowerGCode, lowerSBP, lowerEBB } from './ir.ts';
 
 @customElement('root-element')
@@ -54,6 +55,10 @@ export class RootElement extends LitElement {
     // positions the camera to overhead view
     onPositionImage() {
         this.visualizationSpace?.computeOverheadView();
+    }
+
+    onNextStep() {
+        
     }
 
     // takes picture of the current visualization space
@@ -149,6 +154,14 @@ export class RootElement extends LitElement {
                     </div>
 
                     <div class="menu">
+                        <div class="menu-head">Next Step</div>
+                        <label>
+                            <input type="button" name="Next Step" value="Next Step"
+                            @click=${() => this.onNextStep}>
+                        </label>
+                    </div>
+
+                    <div class="menu">
                         <div class="menu-head">Renderer Toggle</div>
                         <label>
                             <input type="radio" name="renderer" value="svg"
@@ -192,6 +205,7 @@ export class RootElement extends LitElement {
         let canvasContainer = this.renderRoot.querySelector('#canvas-container') as HTMLDivElement;
         if (canvasContainer) {
             this.visualizationSpace = new VisualizationSpace(canvasContainer);
+            setVisualizationSpaceInstance(this.visualizationSpace);
             this.renderTSS();
         }
         else {

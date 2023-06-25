@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
 import { IR } from './type-utils.ts';
-import { drawCross, drawArrow, drawTextAt } from './overlay.ts';
+import { drawCross, drawArrow, drawTextAt, removeMark, drawRect } from './overlay-functions.ts';
+import { overlay1 } from './overlay.ts';
 
 export type TSS = (tp: IR[]) => THREE.Group;
 export type TSSName = 'basicVis' | 'distanceTraveledVis' | 'overlay';
@@ -130,11 +131,7 @@ function distanceTraveledVis(irs: IR[]) {
 }
 
 function overlay() {
-  let mainGroup = new THREE.Group();
-  let cross = drawCross(50, 50); 
-  mainGroup.add(cross);
-  mainGroup.add(drawArrow(100, 80, 150, 100));
-  mainGroup.add(drawTextAt(100, 150, 'testing'));
-  mainGroup.remove(cross);
-  return mainGroup;
+  let groupList = overlay1();
+
+  return groupList[2];
 }
