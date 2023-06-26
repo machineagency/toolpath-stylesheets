@@ -3,7 +3,6 @@ export type GCode = "gcode";
 export type SBP = "sbp";
 export type ISA = EBB | GCode | SBP;
 export type Instruction = string;
-export type Renderer = "svg" | "webgl";
 
 export interface Toolpath {
     isa: ISA;

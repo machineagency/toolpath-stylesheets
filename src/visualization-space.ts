@@ -2,14 +2,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
 import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
-import { Renderer } from './type-utils.ts'
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
     protected scene: THREE.Scene;
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
-    protected threeRenderer?: THREE.Renderer;
+    protected threeRenderer: SVGRenderer;
     protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
     protected renderRequested: boolean; 
@@ -23,6 +22,7 @@ export class VisualizationSpace {
         this.scene.add(this.vizGroup);
         this.camera = this.initCamera(this.envelopeGroup.position, true);
         this.renderRequested = false;
+        this.threeRenderer = this.initThreeRenderer();
         this.initPostDomLoadLogistics();
         // For debugging
         (window as any).vs = this;
@@ -64,7 +64,6 @@ export class VisualizationSpace {
     }
 
     initPostDomLoadLogistics() {
-        this.threeRenderer = this.initThreeRenderer('svg');
         this.controls = this.initControls(this.camera, this.threeRenderer);
         this.threeRenderScene();
         // let animate = () => {
@@ -123,7 +122,8 @@ export class VisualizationSpace {
         return camera;
     }
 
-    initControls(camera: THREE.Camera, renderer: THREE.Renderer) {
+    initControls(camera: THREE.Camera, renderer: SVGRenderer) {
+        // @ts-ignore
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 0.8;
@@ -134,9 +134,8 @@ export class VisualizationSpace {
         return controls;
     }
 
-    initThreeRenderer() {
+    initThreeRenderer(): SVGRenderer {
         let renderer = new SVGRenderer();
-        (renderer as THREE.WebGLRenderer).setPixelRatio(window.devicePixelRatio);
         renderer.setSize(720, 480);
         this.domContainer.appendChild(renderer.domElement);
         return renderer;

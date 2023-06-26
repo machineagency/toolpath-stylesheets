@@ -1,7 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { Toolpath, Renderer } from './type-utils.ts';
+import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
 import { VisualizationSpace } from './visualization-space.ts';
@@ -27,9 +27,6 @@ export class RootElement extends LitElement {
     @property()
     currentTSS: TSS = tssCollection[this.currentTSSName];
 
-    @property()
-    currentRenderer: Renderer = 'svg';
-
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
@@ -44,17 +41,6 @@ export class RootElement extends LitElement {
             this.currentTSS = tssCollection[newName];
         };
         this.renderTSS();
-    }
-
-    // function to change renderers from SVG to WebGL
-    onRendererChange(rendererType: Renderer) {
-        this.visualizationSpace?.initThreeRenderer(rendererType);
-        this.visualizationSpace?.initPostDomLoadLogistics();
-        // if (rendererType === 'svg') {
-        //     //this.visualizationSpace?.computeOverheadView();
-        // } else if (rendererType === 'webgl') {
-        //     //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
-        // }
     }
 
     // positions the camera to overhead view
