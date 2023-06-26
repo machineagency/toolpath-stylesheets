@@ -4,6 +4,13 @@ import { IR } from './type-utils.ts';
 import { drawCross, drawArrow, drawTextAt, removeMark, drawRect } from './overlay-functions.ts';
 import { overlay1 } from './overlay.ts';
 
+/* Imports for efficient line rendering. */
+import { Line2 } from 'three/examples/jsm/lines/Line2.js'
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
+
 export type TSS = (tp: IR[]) => THREE.Group;
 export type TSSName = 'basicVis' | 'distanceTraveledVis' | 'overlay';
 
