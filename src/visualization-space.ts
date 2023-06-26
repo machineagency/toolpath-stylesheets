@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
-// import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import { Renderer } from './type-utils.ts'
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
@@ -63,7 +64,7 @@ export class VisualizationSpace {
     }
 
     initPostDomLoadLogistics() {
-        this.threeRenderer = this.initThreeRenderer();
+        this.threeRenderer = this.initThreeRenderer('svg');
         this.controls = this.initControls(this.camera, this.threeRenderer);
         this.threeRenderScene();
         // let animate = () => {
@@ -134,8 +135,8 @@ export class VisualizationSpace {
     }
 
     initThreeRenderer() {
-        let renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
+        let renderer = new SVGRenderer();
+        (renderer as THREE.WebGLRenderer).setPixelRatio(window.devicePixelRatio);
         renderer.setSize(720, 480);
         this.domContainer.appendChild(renderer.domElement);
         return renderer;

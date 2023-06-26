@@ -27,6 +27,9 @@ export class RootElement extends LitElement {
     @property()
     currentTSS: TSS = tssCollection[this.currentTSSName];
 
+    @property()
+    currentRenderer: Renderer = 'svg';
+
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
@@ -45,11 +48,13 @@ export class RootElement extends LitElement {
 
     // function to change renderers from SVG to WebGL
     onRendererChange(rendererType: Renderer) {
-        if (rendererType === 'svg') {
-            //this.visualizationSpace?.computeOverheadView();
-        } else if (rendererType === 'webgl') {
-            //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
-        }
+        this.visualizationSpace?.initThreeRenderer(rendererType);
+        this.visualizationSpace?.initPostDomLoadLogistics();
+        // if (rendererType === 'svg') {
+        //     //this.visualizationSpace?.computeOverheadView();
+        // } else if (rendererType === 'webgl') {
+        //     //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
+        // }
     }
 
     // positions the camera to overhead view
@@ -62,27 +67,24 @@ export class RootElement extends LitElement {
     }
 
     // takes picture of the current visualization space
-    onSnapshotClick() {
-        this.renderTSS();
-        let canvas = this.renderRoot.querySelector('#canvas-container canvas') as HTMLCanvasElement;
-        let image = new Image();
-        image.src = canvas.toDataURL('image/png');
-        image.style.maxWidth = '100%';
-        image.style.maxHeight = '100%';
-        image.classList.add('image-with-border');
-
-        image.addEventListener('click', () => {
-            this.handleImageInteraction(image.src);
+    onSnapshotClickSvg() {
+        let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
+        let svgCopy = svgElement.cloneNode(true) as SVGElement;
+        svgCopy.addEventListener('click', () => {
+            this.handleImageInteraction(svgCopy.outerHTML);
         })
         let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
-        cameraRollContainer?.appendChild(image);
+        cameraRollContainer?.appendChild(svgCopy);
+        console.log(svgElement);
     }
 
     // downloads images upon user clicking on them
     handleImageInteraction(imageSrc: string) {
         let link = document.createElement('a');
-        link.href = imageSrc;
-        link.download = 'snapshot/png';
+        let url = 'data:image/svg+xml;utf8,' + encodeURI(imageSrc);
+        link.href = url;
+        link.target = '_blank';
+        link.download = 'snapshot.svg';
         link.click();
     }
 
@@ -162,20 +164,6 @@ export class RootElement extends LitElement {
                     </div>
 
                     <div class="menu">
-                        <div class="menu-head">Renderer Toggle</div>
-                        <label>
-                            <input type="radio" name="renderer" value="svg"
-                            @change=${() => this.onRendererChange("svg")}>
-                            SVG Renderer
-                        </label>
-                        <label>
-                            <input type="radio" name="renderer" value="webgl"
-                            @change=${() => this.onRendererChange("webgl")}>
-                            WebGL Renderer
-                        </label>
-                    </div>
-
-                    <div class="menu">
                         <div class="menu-head">Position Image</div>
                         <label>
                             <input type="button" name="Position Image" value="Overhead View"
@@ -187,7 +175,7 @@ export class RootElement extends LitElement {
                         <div class="menu-head">Capture Image</div>
                         <label>
                             <input type="button" name="Capture Image" value="Take snapshot"
-                            @click=${() => this.onSnapshotClick()}>
+                            @click=${() => this.onSnapshotClickSvg()}>
                         </label>
                     </div>
                         
@@ -276,6 +264,11 @@ export class RootElement extends LitElement {
             border: 1px solid white;
             overflow-x: auto;
             white-space: nowrap;
+        }
+        #camera-roll-container svg {
+            max-height: 100px;
+            max-width: 150px;
+            margin-right: 5px;
         }
     `;
 }
