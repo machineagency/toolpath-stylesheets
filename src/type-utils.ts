@@ -24,3 +24,8 @@ export interface IR {
     }
 };
 
+export interface STEP {
+    label: string;
+    group: THREE.Group;
+}
+

@@ -4,6 +4,8 @@ import { customElement, property } from 'lit/decorators.js';
 import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
+// import overlay
+import { overlayCollection, OverlayName, Overlay } from './overlay.ts';
 import { VisualizationSpace } from './visualization-space.ts';
 import { setVisualizationSpaceInstance } from './visualization-space-instance.ts';
 import { lowerGCode, lowerSBP, lowerEBB } from './ir.ts';
@@ -13,34 +15,75 @@ export class RootElement extends LitElement {
 
     toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
     tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
+    // collection of overlays
+    overlayNames: OverlayName[] = Object.keys(overlayCollection) as OverlayName[];
     visualizationSpace: VisualizationSpace | null = null;
 
     @property()
-    currentToolpathName: ToolpathName = this.toolpathNames[0];
+    currentToolpathName: ToolpathName | null = null;
 
     @property()
-    currentToolpath: Toolpath = exampleToolpaths[this.currentToolpathName];
+    currentToolpath: Toolpath | null = null;
 
     @property()
-    currentTSSName: TSSName = 'overlay';
+    currentTSSName: TSSName | null = null;
 
     @property()
-    currentTSS: TSS = tssCollection[this.currentTSSName];
+    currentTSS: TSS | null = null;
 
+    @property()
+    currentOverlayName: OverlayName | null = null;
+
+    @property()
+    currentOverlay: Overlay | null = null;
+
+    // keeps track of what step the user is on
+    @property()
+    currentStepNum: number = 0;
+
+    @property()
+    currentStepName: string = "";
+
+    // handles toolpath menu interaction
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
             this.currentToolpath = exampleToolpaths[newName];
+            // reset the current overlay
+            this.currentOverlay = null;
+            this.currentOverlayName = null;
+            this.currentStepNum = 0;
+            this.currentStepName = "";
         }
         this.renderTSS();
     }
 
+    // handles TSS meny interaction
     onTSSClick(newName: TSSName) {
         if (this.currentTSSName !== newName) {
             this.currentTSSName = newName;
             this.currentTSS = tssCollection[newName];
+            // reset the current overlay
+            this.currentOverlay = null;
+            this.currentOverlayName = null;
+            this.currentStepNum = 0;
+            this.currentStepName = "";
         };
         this.renderTSS();
+    }
+
+    // handles overlay menu interaction
+    onOverlayClick(newName: OverlayName) {
+        if (this.currentOverlayName !== newName) {
+            this.currentOverlayName = newName;
+            this.currentOverlay = overlayCollection[newName];
+            // reset the current toolpath and TSS
+            this.currentTSS = null;
+            this.currentTSSName = null;
+            this.currentToolpath = null;
+            this.currentToolpathName = null;
+        };
+        this.renderOverlay();
     }
 
     // positions the camera to overhead view
@@ -48,8 +91,15 @@ export class RootElement extends LitElement {
         this.visualizationSpace?.computeOverheadView();
     }
 
+    // handles iterating through the different steps of the overlays
     onNextStep() {
-        
+        if (this.currentOverlay) {
+            let numSteps = this.currentOverlay().length;
+            if (this.currentStepNum < numSteps) {
+                this.currentStepNum++;
+                this.renderOverlay();
+            }
+        }
     }
 
     // takes picture of the current visualization space
@@ -74,27 +124,42 @@ export class RootElement extends LitElement {
         link.click();
     }
 
+    // renders the toolpaths based on selected TSS function
     renderTSS() {
-        if (this.currentToolpath.isa === 'sbp') {
-            let lowered = lowerSBP(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
+        if (this.currentToolpathName && this.currentToolpath && this.currentTSSName && this.currentTSS) {
+                if (this.currentToolpath.isa === 'sbp') {
+                    let lowered = lowerSBP(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                } else if (this.currentToolpath.isa === 'gcode') {
+                    let lowered = lowerGCode(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                } else {
+                    let lowered = lowerEBB(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                }
+        }
+    }
+
+    // renders the different overlays
+    renderOverlay() {
+        if (this.currentOverlay && this.currentOverlayName) {
+            let myViz = this.currentOverlay()[this.currentStepNum].group;
+            this.currentStepName = this.currentOverlay()[this.currentStepNum].label;
             if (this.visualizationSpace) {
                 this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
-            }
-        } else if (this.currentToolpath.isa === 'gcode') {
-            let lowered = lowerGCode(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
-            if (this.visualizationSpace) {
-                this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
-            }
-        } else {
-            let lowered = lowerEBB(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
-            if (this.visualizationSpace) {
-                this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                this.visualizationSpace.addVizWithName(myViz, this.currentOverlayName);
             }
         }
     }
@@ -105,6 +170,10 @@ export class RootElement extends LitElement {
 
     maybeHighlightTSS(name: TSSName) {
         return name === this.currentTSSName ? 'highlight' : '';
+    }
+
+    maybeHighlightOverlay(name: OverlayName) {
+        return name === this.currentOverlayName ? 'highlight' : '';
     }
 
     render() {
@@ -123,7 +192,7 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                         <ul class="preview">
-                            ${this.currentToolpath.instructions.map((i: string) => {
+                            ${this.currentToolpath?.instructions.map((i: string) => {
                                 return html`<li><code>${i}</code></li>`;
                             })}
                         </ul>
@@ -140,13 +209,24 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                     </div>
-
                     <div class="menu">
+                        <div class="menu-head">Overlay Menu</div>
+                        <ul class="list">
+                            ${this.overlayNames.map(name => {
+                                return html`
+                                    <li @click=${() => this.onOverlayClick(name)}
+                                        class=${this.maybeHighlightOverlay(name)}>
+                                        ${name}</li>
+                                `;
+                            })}
+                        </ul>
                         <div class="menu-head">Next Step</div>
                         <label>
                             <input type="button" name="Next Step" value="Next Step"
-                            @click=${() => this.onNextStep}>
+                            @click=${() => this.onNextStep()}>
                         </label>
+                        <div class="menu-head">Step Description</div>
+                        <div class="steps-box"> <code>${this.currentStepName}</code></div>
                     </div>
 
                     <div class="menu">
@@ -240,6 +320,15 @@ export class RootElement extends LitElement {
         .image-with-border {
             border: 1px solid white;
             box-sizing: border-box;
+        }
+        .steps-box {
+            border: 1px solid white;
+            margin: 5px;
+            height: 100px;
+        }
+        .steps-text {
+            font-size: 14px;
+            line-height: 1.4;
         }
         #canvas-container canvas {
             border: 1px solid white;

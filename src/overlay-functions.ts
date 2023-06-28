@@ -68,15 +68,7 @@ export function drawTextAt(x: number, y: number, input: string) {
     return group;
 }
 
-// given a reference to an object, removes it from the scene and re-renders
-export function removeMark(objectToRemove: THREE.Object3D) {
-    let visualizationSpace = getVisualizationSpaceInstance();
-    if (visualizationSpace) {
-        visualizationSpace.removeMark(objectToRemove);
-        visualizationSpace.requestRenderScene();
-    }
-}
-
+// draws a highlighted rectangle given the width, height, and left end-point
 export function drawRect(width: number, height: number, x: number, y: number) {
     let geometry = new THREE.PlaneGeometry(width, height);
     let material = new THREE.MeshBasicMaterial({
@@ -93,4 +85,18 @@ export function drawRect(width: number, height: number, x: number, y: number) {
     group.add(rectangle);
     group.rotateX(Math.PI / 2);
     return group;
+}
+
+// given a reference to an object, removes it from the scene and re-renders
+export function removeMark(objectToRemove: THREE.Object3D) {
+    let visualizationSpace = getVisualizationSpaceInstance();
+    if (visualizationSpace) {
+        visualizationSpace.removeMark(objectToRemove);
+        visualizationSpace.requestRenderScene();
+    }
+}
+
+// clones an existing THREE.Group
+export function deepClone(object: any) {
+    return JSON.parse(JSON.stringify(object));
 }

@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
-import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import { SVGRenderer } from 'three/examples/jsm/renderers/SVGRenderer.js';
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
     protected scene: THREE.Scene;
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
-    protected threeRenderer: SVGRenderer;
+    protected threeRenderer: SVGRenderer
     protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
     protected renderRequested: boolean; 
@@ -21,8 +21,8 @@ export class VisualizationSpace {
         this.scene.add(this.envelopeGroup);
         this.scene.add(this.vizGroup);
         this.camera = this.initCamera(this.envelopeGroup.position, true);
-        this.renderRequested = false;
         this.threeRenderer = this.initThreeRenderer();
+        this.renderRequested = false;
         this.initPostDomLoadLogistics();
         // For debugging
         (window as any).vs = this;
@@ -64,6 +64,7 @@ export class VisualizationSpace {
     }
 
     initPostDomLoadLogistics() {
+        //this.threeRenderer = this.initThreeRenderer();
         this.controls = this.initControls(this.camera, this.threeRenderer);
         this.threeRenderScene();
         // let animate = () => {
@@ -123,7 +124,7 @@ export class VisualizationSpace {
     }
 
     initControls(camera: THREE.Camera, renderer: SVGRenderer) {
-        // @ts-ignore
+        //@ts-ignore
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 0.8;
@@ -215,10 +216,10 @@ export class VisualizationSpace {
         // TODO
     }
 
-    
     removeMark(objectToRemove: THREE.Object3D) {
         this.scene.remove(objectToRemove);
-        //this.requestRenderScene();
+        this.requestRenderScene();
+
     }
 
     toString() : string {

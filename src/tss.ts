@@ -1,29 +1,28 @@
 import * as THREE from 'three';
 
 import { IR } from './type-utils.ts';
-import { drawCross, drawArrow, drawTextAt, removeMark, drawRect } from './overlay-functions.ts';
-import { overlay1 } from './overlay.ts';
 
 /* Imports for efficient line rendering. */
 import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
+//import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+//import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 
 export type TSS = (tp: IR[]) => THREE.Group;
-export type TSSName = 'basicVis' | 'distanceTraveledVis' | 'overlay';
+export type TSSName = 'basicVis' | 'distanceTraveledVis';
 
 export type TSSCollection = Record<TSSName, TSS>
 
 export const tssCollection: TSSCollection = {
   basicVis: basicVis,
-  distanceTraveledVis: distanceTraveledVis,
-  overlay: overlay
+  distanceTraveledVis: distanceTraveledVis
 };
 
 function basicVis(irs: IR[]) {
-  let moveCurves: THREE.LineCurve3[] = [];
+  //let moveCurves: THREE.LineCurve3[] = [];
+  let positions: THREE.Vector3[] = [];
+  let colors: number[] = [];
   let currentPos = new THREE.Vector3();
   let previousPos = new THREE.Vector3();
   let isOnBed = false;
@@ -37,8 +36,11 @@ function basicVis(irs: IR[]) {
 
     if (isOnBed && ir.state.toolOnBed) {
       if (currentPos.distanceTo(previousPos) > Number.EPSILON) {
-        let moveCurve = new THREE.LineCurve3(currentPos, newPos);
-        moveCurves.push(moveCurve);
+        //let moveCurve = new THREE.LineCurve3(currentPos, newPos);
+        //moveCurves.push(moveCurve);
+        positions.push(newPos);
+        let red = [255, 0, 0];
+        colors.push(...red);
       }
     }
     // starts new line segment when transitioning from on and off bed
@@ -51,17 +53,35 @@ function basicVis(irs: IR[]) {
     currentPos = newPos;
   });
 
+  /*
   let lines = moveCurves.map(curve => {
-    let geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(50));
-    let material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    return new THREE.Line(geometry, material);
-  });
+    let geometry = new LineGeometry().setFromPoints(curve.getPoints(50));
+    let material = new LineMaterial({ color: 0xff0000 });
+    return new Line2(geometry, material);
+  });*/
 
+  let positionsFlat = positions.map((vec) => [vec.x, vec.y, vec.z]).flat();
+  let lineGeom = new LineGeometry();
+  lineGeom.setPositions(positionsFlat);
+  lineGeom.setColors(colors);
+  let material = new LineMaterial({ 
+    vertexColors: true,
+    linewidth: 1,
+    resolution: new THREE.Vector2(640, 480),
+  });
+  let line = new Line2(lineGeom, material);
+  if (irs[0].state.units == 'in') {
+    line.scale.set(25.4, 25.4, 25.4);
+  }
+  //line.scale.set(1, 1, 1);
+  line.computeLineDistances();
   let group = new THREE.Group();
+  /*
   lines.forEach(line => group.add(line));
   if (irs[0].state.units === 'in') {
     group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
-  }
+  }*/
+  group.add(line);
   group.rotateX(Math.PI / 2);
   return group;
 }
@@ -135,10 +155,4 @@ function distanceTraveledVis(irs: IR[]) {
     group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
   }
   return group;
-}
-
-function overlay() {
-  let groupList = overlay1();
-
-  return groupList[2];
 }
