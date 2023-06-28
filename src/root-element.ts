@@ -102,6 +102,24 @@ export class RootElement extends LitElement {
         }
     }
 
+    // handles iterating to the previous step of the overlay
+    onPrevStep() {
+        if (this.currentOverlay) {
+            if (this.currentStepNum >= 1) {
+                this.currentStepNum--;
+                this.renderOverlay();
+            }
+        }
+    }
+
+    // handles resetting the overlay to start from first step again
+    onResetSteps() {
+        if (this.currentOverlay) {
+            this.currentStepNum = 0;
+            this.renderOverlay();
+        }
+    }
+
     // takes picture of the current visualization space
     onSnapshotClickSvg() {
         let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
@@ -220,10 +238,18 @@ export class RootElement extends LitElement {
                                 `;
                             })}
                         </ul>
-                        <div class="menu-head">Next Step</div>
+                        <div class="menu-head">Step Menu</div>
+                        <label>
+                            <input type="button" name="Previous Step" value="Prev Step"
+                            @click=${() => this.onPrevStep()}>
+                        </label>
                         <label>
                             <input type="button" name="Next Step" value="Next Step"
                             @click=${() => this.onNextStep()}>
+                        </label>
+                        <label>
+                            <input type="button" name="First Step" value="First Step"
+                            @click=${() => this.onResetSteps()}>
                         </label>
                         <div class="menu-head">Step Description</div>
                         <div class="steps-box"> <code>${this.currentStepName}</code></div>
