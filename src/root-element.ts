@@ -182,6 +182,7 @@ export class RootElement extends LitElement {
         }
     }
 
+    
     maybeHighlightToolpath(name: ToolpathName) {
         return name === this.currentToolpathName ? 'highlight' : '';
     }
@@ -189,6 +190,7 @@ export class RootElement extends LitElement {
     maybeHighlightTSS(name: TSSName) {
         return name === this.currentTSSName ? 'highlight' : '';
     }
+    
 
     maybeHighlightOverlay(name: OverlayName) {
         return name === this.currentOverlayName ? 'highlight' : '';
@@ -198,6 +200,7 @@ export class RootElement extends LitElement {
         return html`
             <div class="container">
                 <div class="menu-col">
+                <!-- REMOVE
                     <div class="menu">
                         <div class="menu-head">Toolpath Menu</div>
                         <ul class="list">
@@ -227,6 +230,8 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                     </div>
+                -->
+
                     <div class="menu">
                         <div class="menu-head">Overlay Menu</div>
                         <ul class="list">
@@ -342,6 +347,7 @@ export class RootElement extends LitElement {
         }
         .visualization-pane-col {
             margin: 5px;
+            border: 1px solid white;
         }
         .image-with-border {
             border: 1px solid white;
