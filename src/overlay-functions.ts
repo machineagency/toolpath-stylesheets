@@ -49,23 +49,25 @@ export function drawTextAt(x: number, y: number, input: string) {
     let group = new THREE.Group();
     const loader = new FontLoader();
 
-    loader.load('fonts.json', function (font) {
-        let text = new TextGeometry(input, {
-            font: font,
-            size: 8,
-            height: 0.02,
+    return new Promise<THREE.Group>((resolve) => {
+        loader.load('fonts.json', function (font) {
+            let text = new TextGeometry(input, {
+                font: font as any,
+                size: 8,
+                height: 0.02,
+            });
+    
+            let material = new THREE.MeshPhongMaterial( {color: 0xffb6c1} );
+            let textMesh = new THREE.Mesh(text, material);
+            textMesh.position.set(y, -x, 0);
+            textMesh.rotation.z =  - Math.PI / 2;
+            group.add(textMesh);
+            group.rotateX(Math.PI / 2);
+            group.rotateZ(Math.PI / 2);
         });
-
-        let material = new THREE.MeshPhongMaterial( {color: 0xffb6c1} );
-        let textMesh = new THREE.Mesh(text, material);
-        textMesh.position.set(y, -x, 0);
-        textMesh.rotation.z =  - Math.PI / 2;
-        group.add(textMesh);
-        group.rotateX(Math.PI / 2);
-        group.rotateZ(Math.PI / 2);
+    
+        resolve(group);
     });
-
-    return group;
 }
 
 // draws a highlighted rectangle given the width, height, and left end-point

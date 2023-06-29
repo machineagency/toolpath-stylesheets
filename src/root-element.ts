@@ -121,7 +121,9 @@ export class RootElement extends LitElement {
     }
 
     // takes picture of the current visualization space
-    onSnapshotClickSvg() {
+    async onSnapshotClickSvg() {
+        const url = 'http://localhost:3000/overlay/latestSvg';
+
         let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
         let svgCopy = svgElement.cloneNode(true) as SVGElement;
         svgCopy.addEventListener('click', () => {
@@ -130,6 +132,12 @@ export class RootElement extends LitElement {
         let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
         cameraRollContainer?.appendChild(svgCopy);
         console.log(svgElement);
+
+        let svgText = svgCopy.outerHTML;
+        await fetch(url, {
+            method: 'PUT',
+            body: svgText
+        });
     }
 
     // downloads images upon user clicking on them
