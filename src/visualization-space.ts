@@ -120,6 +120,22 @@ export class VisualizationSpace {
             camera.position.set(-500, 500, 500);
             camera.updateProjectionMatrix();
         }
+        // set default to be overhead view
+        if (camera instanceof THREE.PerspectiveCamera) {
+            const perspectiveCamera = camera as THREE.PerspectiveCamera;
+            perspectiveCamera.position.set(0, -1000, 0);
+            perspectiveCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            perspectiveCamera.up.set(0, 1, 0);
+            perspectiveCamera.fov = 4.5;
+            perspectiveCamera.updateProjectionMatrix();
+        } else if (camera instanceof THREE.OrthographicCamera) {
+            const orthographicCamera = camera as THREE.OrthographicCamera;
+            orthographicCamera.position.set(0, -1000, 0);
+            orthographicCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            orthographicCamera.up.set(0, 1, 0);
+            orthographicCamera.zoom = 2.2;
+            orthographicCamera.updateProjectionMatrix();
+        }
         return camera;
     }
 

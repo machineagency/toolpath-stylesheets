@@ -27,5 +27,10 @@ export interface IR {
 export interface STEP {
     label: string;
     group: THREE.Group;
+    text: {
+        chars: string;
+        x: string;
+        y: string;
+    }
 }
 

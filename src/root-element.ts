@@ -129,11 +129,18 @@ export class RootElement extends LitElement {
         svgCopy.addEventListener('click', () => {
             this.handleImageInteraction(svgCopy.outerHTML);
         })
+
         let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
         cameraRollContainer?.appendChild(svgCopy);
         console.log(svgElement);
+       
+        svgCopy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svgCopy.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+        svgCopy.innerHTML = svgElement.innerHTML;
 
-        let svgText = svgCopy.outerHTML;
+
+        let serializer = new XMLSerializer();
+        let svgText = serializer.serializeToString(svgCopy);
         await fetch(url, {
             method: 'PUT',
             body: svgText
@@ -186,6 +193,18 @@ export class RootElement extends LitElement {
             if (this.visualizationSpace) {
                 this.visualizationSpace.removeAllViz();
                 this.visualizationSpace.addVizWithName(myViz, this.currentOverlayName);
+
+                // add text
+                let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
+                const svgText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                const displayText = this.currentOverlay()[this.currentStepNum].text;
+                // Set the attributes of the SVG text element
+                svgText.setAttribute('x', displayText.x);
+                svgText.setAttribute('y', displayText.y);
+                svgText.setAttribute('fill', 'pink');
+                svgText.setAttribute('font-size', '30px');
+                svgText.textContent = displayText.chars;
+                svgElement.appendChild(svgText);
             }
         }
     }

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+//import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+//import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
-import { getVisualizationSpaceInstance } from './visualization-space-instance';
+//import { getVisualizationSpaceInstance } from './visualization-space-instance';
 
 // function draws a crosshair at the given x and y coord
 export function drawCross(x: number, y: number) {
@@ -43,22 +43,43 @@ export function drawArrow(x1: number, y1: number, x2: number, y2: number) {
     return group;
 }
 
+/*
 // function draws text on the bed starting at the given x and y coord
 // containing the given input string
 export function drawTextAt(x: number, y: number, input: string) {
     let group = new THREE.Group();
     const loader = new FontLoader();
-
+    
     return new Promise<THREE.Group>((resolve) => {
         loader.load('fonts.json', function (font) {
+            
             let text = new TextGeometry(input, {
                 font: font as any,
-                size: 8,
+                size: 5,
                 height: 0.02,
             });
     
-            let material = new THREE.MeshPhongMaterial( {color: 0xffb6c1} );
+            let material = new THREE.MeshBasicMaterial( {color: 0xffb6c1} );
             let textMesh = new THREE.Mesh(text, material);
+            textMesh.position.set(y, -x, 0);
+            textMesh.rotation.z =  - Math.PI / 2;
+            group.add(textMesh);
+            group.rotateX(Math.PI / 2);
+            group.rotateZ(Math.PI / 2);
+            
+            
+            const textOptions = {
+                font: font,
+                size: 8,
+                height: 0.001,
+                curveSegments: 12,
+                bevelEnabled: false
+            };
+    
+            const shapes = font.generateShapes(input, textOptions.size);
+            const geometry = new THREE.ShapeGeometry(shapes);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffb6c1 });
+            const textMesh = new THREE.Mesh(geometry, material);
             textMesh.position.set(y, -x, 0);
             textMesh.rotation.z =  - Math.PI / 2;
             group.add(textMesh);
@@ -68,7 +89,7 @@ export function drawTextAt(x: number, y: number, input: string) {
     
         resolve(group);
     });
-}
+}*/
 
 // draws a highlighted rectangle given the width, height, and left end-point
 export function drawRect(width: number, height: number, x: number, y: number) {
@@ -88,7 +109,7 @@ export function drawRect(width: number, height: number, x: number, y: number) {
     group.rotateX(Math.PI / 2);
     return group;
 }
-
+/*
 // given a reference to an object, removes it from the scene and re-renders
 export function removeMark(objectToRemove: THREE.Object3D) {
     let visualizationSpace = getVisualizationSpaceInstance();
@@ -101,4 +122,4 @@ export function removeMark(objectToRemove: THREE.Object3D) {
 // clones an existing THREE.Group
 export function deepClone(object: any) {
     return JSON.parse(JSON.stringify(object));
-}
+}*/
