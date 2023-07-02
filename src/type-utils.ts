@@ -3,7 +3,6 @@ export type GCode = "gcode";
 export type SBP = "sbp";
 export type ISA = EBB | GCode | SBP;
 export type Instruction = string;
-export type Renderer = "svg" | "webgl";
 
 export interface Toolpath {
     isa: ISA;
@@ -24,4 +23,14 @@ export interface IR {
         toolOnBed: boolean
     }
 };
+
+export interface STEP {
+    label: string;
+    group: THREE.Group;
+    text: {
+        chars: string;
+        x: string;
+        y: string;
+    }
+}
 
