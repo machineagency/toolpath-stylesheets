@@ -90,7 +90,8 @@ export class RootElement extends LitElement {
     onPositionImage() {
         this.visualizationSpace?.computeOverheadView();
     }
-
+     
+    /*
     // handles iterating through the different steps of the overlays
     onNextStep() {
         if (this.currentOverlay) {
@@ -119,7 +120,9 @@ export class RootElement extends LitElement {
             this.renderOverlay();
         }
     }
+    */
 
+    /*
     // takes picture of the current visualization space
     async onSnapshotClickSvg() {
         const url = 'http://localhost:3000/overlay/latestSvg';
@@ -156,6 +159,7 @@ export class RootElement extends LitElement {
         link.download = 'snapshot.svg';
         link.click();
     }
+    */
 
     // renders the toolpaths based on selected TSS function
     renderTSS() {
@@ -227,7 +231,6 @@ export class RootElement extends LitElement {
         return html`
             <div class="container">
                 <div class="menu-col">
-                <!-- REMOVE
                     <div class="menu">
                         <div class="menu-head">Toolpath Menu</div>
                         <ul class="list">
@@ -257,8 +260,8 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                     </div>
-                -->
 
+                    <!-- REMOVE
                     <div class="menu">
                         <div class="menu-head">Overlay Menu</div>
                         <ul class="list">
@@ -273,19 +276,20 @@ export class RootElement extends LitElement {
                         <div class="menu-head">Step Menu</div>
                         <label>
                             <input type="button" name="Previous Step" value="Prev Step"
-                            @click=${() => this.onPrevStep()}>
+                            @click=>
                         </label>
                         <label>
                             <input type="button" name="Next Step" value="Next Step"
-                            @click=${() => this.onNextStep()}>
+                            @click=>
                         </label>
                         <label>
                             <input type="button" name="First Step" value="First Step"
-                            @click=${() => this.onResetSteps()}>
+                            @click=>
                         </label>
                         <div class="menu-head">Step Description</div>
                         <div class="steps-box"> <code>${this.currentStepName}</code></div>
                     </div>
+                    -->
 
                     <div class="menu">
                         <div class="menu-head">Position Image</div>
@@ -295,18 +299,22 @@ export class RootElement extends LitElement {
                         </label>
                     </div>
 
+                    <!-- REMOVE       
                     <div class="menu">
                         <div class="menu-head">Capture Image</div>
                         <label>
                             <input type="button" name="Capture Image" value="Take snapshot"
-                            @click=${() => this.onSnapshotClickSvg()}>
+                            @click=>
                         </label>
                     </div>
+                    -->
                         
                 </div>
                 <div class="visualization-pane-col">
                     <div id="canvas-container"></div>
+                    <!-- REMOVE
                     <div id="camera-roll-container"></div>
+                    -->
                 </div>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
@@ -392,6 +400,7 @@ export class RootElement extends LitElement {
         #canvas-container canvas {
             border: 1px solid white;
         }
+        <!-- REMOVE
         #camera-roll-container {
             max-width: 750px;
             height: 200px;
@@ -404,6 +413,7 @@ export class RootElement extends LitElement {
             max-width: 150px;
             margin-right: 5px;
         }
+        -->
     `;
 }
 

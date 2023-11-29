@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
-import { SVGRenderer } from 'three/examples/jsm/renderers/SVGRenderer.js';
+//import { SVGRenderer } from 'three/examples/jsm/renderers/SVGRenderer.js';
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
     protected scene: THREE.Scene;
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
-    protected threeRenderer: SVGRenderer
+    //protected threeRenderer: SVGRenderer
+    protected threeRenderer?: THREE.Renderer;
     protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
     protected renderRequested: boolean; 
@@ -21,7 +22,7 @@ export class VisualizationSpace {
         this.scene.add(this.envelopeGroup);
         this.scene.add(this.vizGroup);
         this.camera = this.initCamera(this.envelopeGroup.position, true);
-        this.threeRenderer = this.initThreeRenderer();
+        //this.threeRenderer = this.initThreeRenderer();
         this.renderRequested = false;
         this.initPostDomLoadLogistics();
         // For debugging
@@ -64,7 +65,7 @@ export class VisualizationSpace {
     }
 
     initPostDomLoadLogistics() {
-        //this.threeRenderer = this.initThreeRenderer();
+        this.threeRenderer = this.initThreeRenderer();
         this.controls = this.initControls(this.camera, this.threeRenderer);
         this.threeRenderScene();
         // let animate = () => {
@@ -139,7 +140,7 @@ export class VisualizationSpace {
         return camera;
     }
 
-    initControls(camera: THREE.Camera, renderer: SVGRenderer) {
+    initControls(camera: THREE.Camera, renderer: THREE.Renderer) {
         //@ts-ignore
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.rotateSpeed = 1.0;
@@ -151,8 +152,17 @@ export class VisualizationSpace {
         return controls;
     }
 
+    /*
     initThreeRenderer(): SVGRenderer {
         let renderer = new SVGRenderer();
+        renderer.setSize(720, 480);
+        this.domContainer.appendChild(renderer.domElement);
+        return renderer;
+    }*/
+
+    initThreeRenderer() {
+        let renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(720, 480);
         this.domContainer.appendChild(renderer.domElement);
         return renderer;
