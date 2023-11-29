@@ -195,7 +195,6 @@ function sharpAnglesVis(irs: IR[], sharpAngleThreshold: number = 60) {
     let material = new THREE.LineBasicMaterial({ color: 0xff0000 });
     return new THREE.Line(geometry, material);
   });
-  console.log(moveCurves);
 
   let sharpAngles = [];
   // now, find all the sharp angles based on some threshold value
@@ -218,7 +217,7 @@ function sharpAnglesVis(irs: IR[], sharpAngleThreshold: number = 60) {
 
     // Calculate the angle between the vectors in degrees
     let angle = THREE.MathUtils.radToDeg(dir1.angleTo(dir2));
-    console.log(angle);
+   
     // Check if the angle is sharper than threshold
     if (angle < sharpAngleThreshold) {
       // Define the scale factor for the shorter line
@@ -247,6 +246,7 @@ function sharpAnglesVis(irs: IR[], sharpAngleThreshold: number = 60) {
   let group = new THREE.Group();
   
   lines.forEach(line => group.add(line));
+  // add all the sharp angles to the group
   sharpAngles.forEach(line => group.add(line));
   if (irs[0].state.units === 'in') {
     group.scale.set(25.4, 25.4, 25.4); // in to mm converstion
