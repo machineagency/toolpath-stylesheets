@@ -1,11 +1,83 @@
 import { Toolpath } from './type-utils.ts';
 
 export type ToolpathName = 'test1' | 'spbTest' | 'ebbSignature' | 'gCodeWave' |
-                           'ebbBox' | 'gears';
+                           'ebbBox' | 'gears' | '10 degrees' | '30 degrees' | 
+                           '60 degrees' | '90 degrees' | '120 degrees' | '150 degrees' |
+                           '180 degrees';
 
 export type ToolpathCollection = Record<ToolpathName, Toolpath>;
 
 export const exampleToolpaths: ToolpathCollection = {
+    '10 degrees': {
+        isa: 'gcode',
+        instructions: [
+        'G0 X0.00 Y0.00',
+        'G1 X100.0 Y100',
+        'G1 X50.0 Y100',
+        'G1 X100 Y108.816'
+        ]
+    },
+
+    '30 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X100.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X100 Y128.868'
+        ]
+    },
+
+    '60 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X100.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X100 Y186.603'
+        ]
+    },
+
+    '90 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X100.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X50.0 Y150'
+        ]
+    },
+
+    '120 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X25.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X100 Y186.603'
+        ]
+    },
+
+    '150 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X25.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X100 Y128.868'
+        ]
+    },
+
+    '180 degrees': {
+        isa: 'gcode',
+        instructions: [
+            'G0 X0.00 Y0.00',
+            'G1 X100.0 Y100',
+            'G1 X50.0 Y100',
+            'G1 X25.0 Y100'
+        ]
+    },
+
      'test1': {
          isa: 'gcode',
          instructions : [

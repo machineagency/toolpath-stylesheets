@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 //import { cameraProjectionMatrix } from 'three/examples/jsm/nodes/Nodes.js';
-// import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+//import { SVGRenderer } from 'three/examples/jsm/renderers/SVGRenderer.js';
 
 export class VisualizationSpace {
     protected domContainer: HTMLDivElement;
     protected scene: THREE.Scene;
     protected camera: THREE.Camera;
     protected controls?: OrbitControls;
+    //protected threeRenderer: SVGRenderer
     protected threeRenderer?: THREE.Renderer;
     protected envelopeGroup: THREE.Group;
     protected vizGroup: THREE.Group;
@@ -21,6 +22,7 @@ export class VisualizationSpace {
         this.scene.add(this.envelopeGroup);
         this.scene.add(this.vizGroup);
         this.camera = this.initCamera(this.envelopeGroup.position, true);
+        //this.threeRenderer = this.initThreeRenderer();
         this.renderRequested = false;
         this.initPostDomLoadLogistics();
         // For debugging
@@ -119,10 +121,27 @@ export class VisualizationSpace {
             camera.position.set(-500, 500, 500);
             camera.updateProjectionMatrix();
         }
+        // set default to be overhead view
+        if (camera instanceof THREE.PerspectiveCamera) {
+            const perspectiveCamera = camera as THREE.PerspectiveCamera;
+            perspectiveCamera.position.set(0, -1000, 0);
+            perspectiveCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            perspectiveCamera.up.set(0, 1, 0);
+            perspectiveCamera.fov = 4.5;
+            perspectiveCamera.updateProjectionMatrix();
+        } else if (camera instanceof THREE.OrthographicCamera) {
+            const orthographicCamera = camera as THREE.OrthographicCamera;
+            orthographicCamera.position.set(0, -1000, 0);
+            orthographicCamera.lookAt(this.scene.position.add(new THREE.Vector3(-150, 0, -109)));
+            orthographicCamera.up.set(0, 1, 0);
+            orthographicCamera.zoom = 2.2;
+            orthographicCamera.updateProjectionMatrix();
+        }
         return camera;
     }
 
     initControls(camera: THREE.Camera, renderer: THREE.Renderer) {
+        //@ts-ignore
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 0.8;
@@ -132,6 +151,14 @@ export class VisualizationSpace {
         controls.dampingFactor = 0.5;
         return controls;
     }
+
+    /*
+    initThreeRenderer(): SVGRenderer {
+        let renderer = new SVGRenderer();
+        renderer.setSize(720, 480);
+        this.domContainer.appendChild(renderer.domElement);
+        return renderer;
+    }*/
 
     initThreeRenderer() {
         let renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -215,10 +242,10 @@ export class VisualizationSpace {
         // TODO
     }
 
-    
     removeMark(objectToRemove: THREE.Object3D) {
         this.scene.remove(objectToRemove);
-        //this.requestRenderScene();
+        this.requestRenderScene();
+
     }
 
     toString() : string {

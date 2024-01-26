@@ -1,9 +1,11 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { Toolpath, Renderer } from './type-utils.ts';
+import { Toolpath } from './type-utils.ts';
 import { exampleToolpaths, ToolpathName } from './example-toolpaths.ts';
 import { tssCollection, TSSName, TSS } from './tss.ts';
+// import overlay
+import { overlayCollection, OverlayName, Overlay } from './overlay.ts';
 import { VisualizationSpace } from './visualization-space.ts';
 import { setVisualizationSpaceInstance } from './visualization-space-instance.ts';
 import { lowerGCode, lowerSBP, lowerEBB } from './ir.ts';
@@ -13,110 +15,216 @@ export class RootElement extends LitElement {
 
     toolpathNames = Object.keys(exampleToolpaths) as ToolpathName[];
     tssNames: TSSName[] = Object.keys(tssCollection) as TSSName[];
+    // collection of overlays
+    overlayNames: OverlayName[] = Object.keys(overlayCollection) as OverlayName[];
     visualizationSpace: VisualizationSpace | null = null;
 
     @property()
-    currentToolpathName: ToolpathName = this.toolpathNames[0];
+    currentToolpathName: ToolpathName | null = null;
 
     @property()
-    currentToolpath: Toolpath = exampleToolpaths[this.currentToolpathName];
+    currentToolpath: Toolpath | null = null;
 
     @property()
-    currentTSSName: TSSName = 'overlay';
+    currentTSSName: TSSName | null = null;
 
     @property()
-    currentTSS: TSS = tssCollection[this.currentTSSName];
+    currentTSS: TSS | null = null;
 
+    @property()
+    currentOverlayName: OverlayName | null = null;
+
+    @property()
+    currentOverlay: Overlay | null = null;
+
+    // keeps track of what step the user is on
+    @property()
+    currentStepNum: number = 0;
+
+    @property()
+    currentStepName: string = "";
+
+    // handles toolpath menu interaction
     onToolpathClick(newName: ToolpathName) {
         if (this.currentToolpathName !== newName) {
             this.currentToolpathName = newName;
             this.currentToolpath = exampleToolpaths[newName];
+            // reset the current overlay
+            this.currentOverlay = null;
+            this.currentOverlayName = null;
+            this.currentStepNum = 0;
+            this.currentStepName = "";
         }
         this.renderTSS();
     }
 
+    // handles TSS meny interaction
     onTSSClick(newName: TSSName) {
         if (this.currentTSSName !== newName) {
             this.currentTSSName = newName;
             this.currentTSS = tssCollection[newName];
+            // reset the current overlay
+            this.currentOverlay = null;
+            this.currentOverlayName = null;
+            this.currentStepNum = 0;
+            this.currentStepName = "";
         };
         this.renderTSS();
     }
 
-    // function to change renderers from SVG to WebGL
-    onRendererChange(rendererType: Renderer) {
-        if (rendererType === 'svg') {
-            //this.visualizationSpace?.computeOverheadView();
-        } else if (rendererType === 'webgl') {
-            //this.visualizationSpace?.initCamera(new Vector3(150, 17/2, 109), true);
-        }
+    // handles overlay menu interaction
+    onOverlayClick(newName: OverlayName) {
+        if (this.currentOverlayName !== newName) {
+            this.currentOverlayName = newName;
+            this.currentOverlay = overlayCollection[newName];
+            // reset the current toolpath and TSS
+            this.currentTSS = null;
+            this.currentTSSName = null;
+            this.currentToolpath = null;
+            this.currentToolpathName = null;
+        };
+        this.renderOverlay();
     }
 
     // positions the camera to overhead view
     onPositionImage() {
         this.visualizationSpace?.computeOverheadView();
     }
-
+     
+    /*
+    // handles iterating through the different steps of the overlays
     onNextStep() {
-        
+        if (this.currentOverlay) {
+            let numSteps = this.currentOverlay().length;
+            if (this.currentStepNum < numSteps) {
+                this.currentStepNum++;
+                this.renderOverlay();
+            }
+        }
     }
 
-    // takes picture of the current visualization space
-    onSnapshotClick() {
-        this.renderTSS();
-        let canvas = this.renderRoot.querySelector('#canvas-container canvas') as HTMLCanvasElement;
-        let image = new Image();
-        image.src = canvas.toDataURL('image/png');
-        image.style.maxWidth = '100%';
-        image.style.maxHeight = '100%';
-        image.classList.add('image-with-border');
+    // handles iterating to the previous step of the overlay
+    onPrevStep() {
+        if (this.currentOverlay) {
+            if (this.currentStepNum >= 1) {
+                this.currentStepNum--;
+                this.renderOverlay();
+            }
+        }
+    }
 
-        image.addEventListener('click', () => {
-            this.handleImageInteraction(image.src);
+    // handles resetting the overlay to start from first step again
+    onResetSteps() {
+        if (this.currentOverlay) {
+            this.currentStepNum = 0;
+            this.renderOverlay();
+        }
+    }
+    */
+
+    /*
+    // takes picture of the current visualization space
+    async onSnapshotClickSvg() {
+        const url = 'http://localhost:3000/overlay/latestSvg';
+
+        let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
+        let svgCopy = svgElement.cloneNode(true) as SVGElement;
+        svgCopy.addEventListener('click', () => {
+            this.handleImageInteraction(svgCopy.outerHTML);
         })
+
         let cameraRollContainer = this.renderRoot.querySelector('#camera-roll-container');
-        cameraRollContainer?.appendChild(image);
+        cameraRollContainer?.appendChild(svgCopy);
+        console.log(svgElement);
+       
+        svgCopy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svgCopy.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+        svgCopy.innerHTML = svgElement.innerHTML;
+
+
+        let serializer = new XMLSerializer();
+        let svgText = serializer.serializeToString(svgCopy);
+        await fetch(url, {
+            method: 'PUT',
+            body: svgText
+        });
     }
 
     // downloads images upon user clicking on them
     handleImageInteraction(imageSrc: string) {
         let link = document.createElement('a');
-        link.href = imageSrc;
-        link.download = 'snapshot/png';
+        let url = 'data:image/svg+xml;utf8,' + encodeURI(imageSrc);
+        link.href = url;
+        link.target = '_blank';
+        link.download = 'snapshot.svg';
         link.click();
     }
+    */
 
+    // renders the toolpaths based on selected TSS function
     renderTSS() {
-        if (this.currentToolpath.isa === 'sbp') {
-            let lowered = lowerSBP(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
+        if (this.currentToolpathName && this.currentToolpath && this.currentTSSName && this.currentTSS) {
+                if (this.currentToolpath.isa === 'sbp') {
+                    let lowered = lowerSBP(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                } else if (this.currentToolpath.isa === 'gcode') {
+                    let lowered = lowerGCode(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                } else {
+                    let lowered = lowerEBB(this.currentToolpath);
+                    let myViz = this.currentTSS(lowered);
+                    if (this.visualizationSpace) {
+                        this.visualizationSpace.removeAllViz();
+                        this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                    }
+                }
+        }
+    }
+
+    // renders the different overlays
+    renderOverlay() {
+        if (this.currentOverlay && this.currentOverlayName) {
+            let myViz = this.currentOverlay()[this.currentStepNum].group;
+            this.currentStepName = this.currentOverlay()[this.currentStepNum].label;
             if (this.visualizationSpace) {
                 this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
-            }
-        } else if (this.currentToolpath.isa === 'gcode') {
-            let lowered = lowerGCode(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
-            if (this.visualizationSpace) {
-                this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
-            }
-        } else {
-            let lowered = lowerEBB(this.currentToolpath);
-            let myViz = this.currentTSS(lowered);
-            if (this.visualizationSpace) {
-                this.visualizationSpace.removeAllViz();
-                this.visualizationSpace.addVizWithName(myViz, this.currentTSSName);
+                this.visualizationSpace.addVizWithName(myViz, this.currentOverlayName);
+
+                // add text
+                let svgElement = this.renderRoot.querySelector('#canvas-container svg') as SVGElement;
+                const svgText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                const displayText = this.currentOverlay()[this.currentStepNum].text;
+                // Set the attributes of the SVG text element
+                svgText.setAttribute('x', displayText.x);
+                svgText.setAttribute('y', displayText.y);
+                svgText.setAttribute('fill', 'pink');
+                svgText.setAttribute('font-size', '30px');
+                svgText.textContent = displayText.chars;
+                svgElement.appendChild(svgText);
             }
         }
     }
 
+    
     maybeHighlightToolpath(name: ToolpathName) {
         return name === this.currentToolpathName ? 'highlight' : '';
     }
 
     maybeHighlightTSS(name: TSSName) {
         return name === this.currentTSSName ? 'highlight' : '';
+    }
+    
+
+    maybeHighlightOverlay(name: OverlayName) {
+        return name === this.currentOverlayName ? 'highlight' : '';
     }
 
     render() {
@@ -135,7 +243,7 @@ export class RootElement extends LitElement {
                             })}
                         </ul>
                         <ul class="preview">
-                            ${this.currentToolpath.instructions.map((i: string) => {
+                            ${this.currentToolpath?.instructions.map((i: string) => {
                                 return html`<li><code>${i}</code></li>`;
                             })}
                         </ul>
@@ -153,27 +261,35 @@ export class RootElement extends LitElement {
                         </ul>
                     </div>
 
+                    <!-- REMOVE
                     <div class="menu">
-                        <div class="menu-head">Next Step</div>
+                        <div class="menu-head">Overlay Menu</div>
+                        <ul class="list">
+                            ${this.overlayNames.map(name => {
+                                return html`
+                                    <li @click=${() => this.onOverlayClick(name)}
+                                        class=${this.maybeHighlightOverlay(name)}>
+                                        ${name}</li>
+                                `;
+                            })}
+                        </ul>
+                        <div class="menu-head">Step Menu</div>
+                        <label>
+                            <input type="button" name="Previous Step" value="Prev Step"
+                            @click=>
+                        </label>
                         <label>
                             <input type="button" name="Next Step" value="Next Step"
-                            @click=${() => this.onNextStep}>
-                        </label>
-                    </div>
-
-                    <div class="menu">
-                        <div class="menu-head">Renderer Toggle</div>
-                        <label>
-                            <input type="radio" name="renderer" value="svg"
-                            @change=${() => this.onRendererChange("svg")}>
-                            SVG Renderer
+                            @click=>
                         </label>
                         <label>
-                            <input type="radio" name="renderer" value="webgl"
-                            @change=${() => this.onRendererChange("webgl")}>
-                            WebGL Renderer
+                            <input type="button" name="First Step" value="First Step"
+                            @click=>
                         </label>
+                        <div class="menu-head">Step Description</div>
+                        <div class="steps-box"> <code>${this.currentStepName}</code></div>
                     </div>
+                    -->
 
                     <div class="menu">
                         <div class="menu-head">Position Image</div>
@@ -183,18 +299,22 @@ export class RootElement extends LitElement {
                         </label>
                     </div>
 
+                    <!-- REMOVE       
                     <div class="menu">
                         <div class="menu-head">Capture Image</div>
                         <label>
                             <input type="button" name="Capture Image" value="Take snapshot"
-                            @click=${() => this.onSnapshotClick()}>
+                            @click=>
                         </label>
                     </div>
+                    -->
                         
                 </div>
                 <div class="visualization-pane-col">
                     <div id="canvas-container"></div>
+                    <!-- REMOVE
                     <div id="camera-roll-container"></div>
+                    -->
                 </div>
                 <!-- <debugging-pane></debugging-pane> -->
             </div>
@@ -262,14 +382,25 @@ export class RootElement extends LitElement {
         }
         .visualization-pane-col {
             margin: 5px;
+            border: 1px solid white;
         }
         .image-with-border {
             border: 1px solid white;
             box-sizing: border-box;
         }
+        .steps-box {
+            border: 1px solid white;
+            margin: 5px;
+            height: 100px;
+        }
+        .steps-text {
+            font-size: 14px;
+            line-height: 1.4;
+        }
         #canvas-container canvas {
             border: 1px solid white;
         }
+        <!-- REMOVE
         #camera-roll-container {
             max-width: 750px;
             height: 200px;
@@ -277,6 +408,12 @@ export class RootElement extends LitElement {
             overflow-x: auto;
             white-space: nowrap;
         }
+        #camera-roll-container svg {
+            max-height: 100px;
+            max-width: 150px;
+            margin-right: 5px;
+        }
+        -->
     `;
 }
 
