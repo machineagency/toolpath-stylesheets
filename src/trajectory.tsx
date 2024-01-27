@@ -1,6 +1,35 @@
-import React, { startTransition } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
+import {useEffect, useRef} from "react";
 
+import * as Plot from "@observablehq/plot";
+
+interface SegmentPlotProps {
+    segments: Segment[];
+}
+
+function SegmentPlot({ segments }: SegmentPlotProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (segments === undefined) return;
+        const plot = Plot.plot({
+          grid: true,
+          marks: [
+            Plot.dot(segments, {
+                x: (d: Segment) => d.coords.x,
+                y: (d: Segment) => d.coords.y
+            })
+          ]
+        });
+        if (containerRef.current) {
+            containerRef.current.append(plot);
+        }
+        return () => plot.remove();
+      }, [segments]);
+
+    return <div ref={containerRef}/>;
+}
 
 function TrajectoryWindow() {
     let segments = makeTestSegment(20);
@@ -11,9 +40,7 @@ function TrajectoryWindow() {
     })
     return (<div>
         <h1>Test Segments</h1>
-        <ul>
-            {listItems}
-        </ul>
+        <SegmentPlot segments={segments}></SegmentPlot>
     </div>)
 };
 
