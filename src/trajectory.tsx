@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { startTransition } from 'react';
 import ReactDOM from 'react-dom';
 
 
@@ -126,12 +126,42 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
 
     if (v0 === null) {
         if (v === null) {
-            //@ts-expect-error
-            let startVel = x / t - a * t / 2;
-            //@ts-expect-error
-            return firstOrder(startVel, startVel + a * t, a, t, x);
+            let startVel = x! / t! - a! * t! / 2;
+            return firstOrder(startVel, startVel + a! * t!, a!, t!, x!);
+        } else if (a === null) {
+            let startVel = 2 * x! / t! - v;
+            return firstOrder(startVel, v, (v - startVel) / t!, t!, x!);
+        } else if (t === null) {
+            let startVel = Math.sqrt(v**2 - 2 * a * x!);
+            return firstOrder(startVel, v, a, (v - startVel) / a, x!);
+        } else if (x === null) {
+            let startVel = v - a * t;
+            return firstOrder(startVel, v, a, t, t * (startVel + v) / 2);
         }
     }
+    if (v === null) {
+        if (a === null) {
+            let endVel = 2 * x! / t! - v0!;
+            return firstOrder(v0!, endVel, (endVel - v0!) / t!, t!, x!);
+        } else if (t === null) {
+            let endVel = Math.sqrt(v0!**2 + 2 * a * x!);
+            return firstOrder(v0!, endVel, a, (endVel - v0!) / a, x!);
+        } else {
+            let endVel = v0! + a * t;
+            return firstOrder(v0!, endVel, a, t, t * (v0! + endVel) / 2);
+        }
+    }
+    if (a === null) {
+        if (t === null) {
+            let time = 2 * x! / (v0! + v);
+            return firstOrder(v0!, v, (v - v0!) / time, time, x!);
+        } else if (x === null) {
+            let acc = (v - v0!) / t;
+            return firstOrder(v0!, v, acc, t, t * (v0! + v) / 2);
+        }
+    }
+    let time = (v - v0!) / a!;
+    return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
 function makeTestSegment(n: number): Segment[] {
