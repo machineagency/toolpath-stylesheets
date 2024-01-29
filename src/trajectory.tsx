@@ -262,6 +262,18 @@ function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimit
         let v = limitVector(s.unit, limits.vMax);
 
         let jv = computeJunctionVelocity(prev, s, limits);
+        if (jv != null) {
+            let velocityInit = Math.min(v0, jv);
+        }
+
+        let changed = false;
+        if (p.v0 > v || p.v > v) {
+            p = normalize(Math.min(p.v0, v), Math.min(p.v, v), null, null, p.x) as FirstOrder;
+            changed = true;
+        }
+        if (Math.abs(p.a) > s.aMax) {
+
+        }
     })
 }
 
@@ -278,10 +290,26 @@ function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: Kinemat
         junctionVect.y /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
 
         let junctionAcceleration = limitValueByAxis(limits.aMax, junctionVect);
+        let sinThetaD2 = Math.sqrt(0.5 * (1 - junctionCos));
+        let junctionVelocity = (junctionAcceleration * limits.junctionDeviation * sinThetaD2) / (1 - sinThetaD2);
+        return Math.max(limits.junctionSpeed, junctionVelocity);
     }
 }
 
-function limitValueByAxis(limits: Coords, )
+function limitValueByAxis(limits: Coords, vector: Coords): number {
+    let limitValue = 1e19;
+    // handle x coord
+    if (vector.x != 0) {
+        limitValue = Math.min(limitValue, Math.abs(limits.x / vector.x));
+    }
+
+    // handle y coord
+    if (vector.y != 0) {
+        limitValue = Math.min(limitValue, Math.abs(limits.y / vector.y));
+    }
+
+    return limitValue;
+}
 
 function linspace(start: number, stop: number, cardinality: number): number[] {
     let arr: number[] = [];
