@@ -43,16 +43,39 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
 
     useEffect(() => {
         if (lineSegments === undefined) return;
+        const cumulativeTimes = lineSegments
+            .map((ls: LineSegment) => ls.profile.t)
+            .map(((sum: number) => (value: number) => sum += value)(0))
         const plot = Plot.plot({
             y: {
               grid: true,
-              label: "Velocity"
+              label: "mm / s ( / s)"
             },
             marks: [
               Plot.line(lineSegments, {
-                x: (ls: LineSegment) => ls.profile.t,
-                y: (ls: LineSegment) => ls.profile.v0
-              })
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.v0,
+                stroke: "#4e79a7"
+              }),
+              Plot.text(lineSegments, Plot.selectLast({
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.v0,
+                text: (_) => "Velocity",
+                lineAnchor: "top",
+                dy: -5
+              })),
+              Plot.line(lineSegments, {
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.a,
+                stroke: "#e15759"
+              }),
+              Plot.text(lineSegments, Plot.selectLast({
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.a,
+                text: (_) => "Acceleration",
+                lineAnchor: "top",
+                dy: -5
+              }))
             ]
           })
         if (containerRef.current) {
@@ -65,13 +88,16 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
 }
 
 function TrajectoryWindow() {
-    let segments = makeTestSegment(20);
-    let testLineSegments: LineSegment[] = [];
+    let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     return (<div>
-        <div>Points to be visited</div>
-        <SegmentPlot segments={segments}></SegmentPlot>
-        <div>Pre-planned Segments</div>
-        <ProfilePlot lineSegments={testLineSegments}></ProfilePlot>
+        <div className="plot-title">Locations to be visited</div>
+        <SegmentPlot segments={locations}></SegmentPlot>
+        <div className="plot-title">Pre-planned Segments</div>
+        <ProfilePlot lineSegments={prePlanned}></ProfilePlot>
+        <div className="plot-title">Half-planned Segments</div>
+        <ProfilePlot lineSegments={halfPlanned}></ProfilePlot>
+        <div className="plot-title">Fully-planned Segments</div>
+        <ProfilePlot lineSegments={fullyPlanned}></ProfilePlot>
     </div>)
 };
 
