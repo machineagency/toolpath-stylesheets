@@ -9,6 +9,10 @@ interface SegmentPlotProps {
     segments: Segment[];
 }
 
+interface ProfilePlotProps {
+    lineSegments: LineSegment[];
+}
+
 function SegmentPlot({ segments }: SegmentPlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -32,21 +36,41 @@ function SegmentPlot({ segments }: SegmentPlotProps) {
     return <div ref={containerRef}/>;
 }
 
+function ProfilePlot({ lineSegments }: ProfilePlotProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (lineSegments === undefined) return;
+        const plot = Plot.plot({
+            y: {
+              grid: true,
+              label: "Velocity"
+            },
+            marks: [
+              Plot.line(lineSegments, {
+                x: (ls: LineSegment) => ls.profile.t,
+                y: (ls: LineSegment) => ls.profile.v0
+              })
+            ]
+          })
+        if (containerRef.current) {
+            containerRef.current.append(plot);
+        }
+        return () => plot.remove();
+      }, [lineSegments]);
+
+    return <div ref={containerRef}/>;
+}
+
 function TrajectoryWindow() {
     let segments = makeTestSegment(20);
-    let listItems = segments.map((segment: Segment, index: number) => {
-        return <li key={index}>
-            {segment.coords.x}, {segment.coords.y}
-        </li>
-    })
+    let testLineSegments: LineSegment[] = [];
     return (<div>
-        <h1>Test Segments</h1>
+        <div>Points to be visited</div>
         <SegmentPlot segments={segments}></SegmentPlot>
+        <div>Pre-planned Segments</div>
+        <ProfilePlot lineSegments={testLineSegments}></ProfilePlot>
     </div>)
-};
-
-function returnRandomNumber() {
-    return (Math.random() * 10).toString();
 };
 
 interface Coords {
