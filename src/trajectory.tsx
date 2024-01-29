@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
+import { norm, number } from "mathjs";
 
 import * as Plot from "@observablehq/plot";
 
@@ -69,12 +70,12 @@ interface LineSegment {
     end: Coords,
     unit: Coords,
     profile: FirstOrder,
-    amax: number
+    aMax: number
 }
 
-interface Kinematics {
-    vMax: number,
-    aMax: number,
+interface KinematicLimits {
+    vMax: Coords,
+    aMax: Coords,
     junctionSpeed: number,
     junctionDeviation: number
 }
@@ -111,12 +112,12 @@ function lineSegment(parent: number, start: Coords, end: Coords, unit: Coords,
         end: end,
         unit: unit,
         profile: profile,
-        amax: amax
+        aMax: amax
     }
 }
 
-function kinematics(maxVelocity: number, maxAcceleration: number, 
-         junctionSpeed: number, junctionDeviation: number): Kinematics {
+function kinematicLimits(maxVelocity: Coords, maxAcceleration: Coords, 
+         junctionSpeed: number, junctionDeviation: number): KinematicLimits {
     return {
         vMax: maxVelocity,
         aMax: maxAcceleration,
@@ -136,7 +137,7 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
     }
 }
 
-function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords, k1: Kinematics): LineSegment {
+function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords, k1: KinematicLimits): LineSegment {
     let startVel = Math.abs(v0);
     let endVel = Math.abs(v1);
     let delta = coords(end.x - start.x, end.y - start.y)
@@ -148,8 +149,8 @@ function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coo
 
 }
 
-function limitVector(v: Coords, l: number): number {
-    let absV = coords(Math.abs(v.x) / l, Math.abs(v.y) / l);
+function limitVector(v: Coords, l: Coords): number {
+    let absV = coords(Math.abs(v.x) / l.x, Math.abs(v.y) / l.y);
     let max = Math.max(absV.x, absV.y);
     return 1 / max;
 }
@@ -212,6 +213,21 @@ function makeTestSegment(n: number): Segment[] {
 
     let end: Segment = segment(n + 1, 3.0, 3.0, coords(0, -5));
     segments.push(end);
+
+    let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2);
+    let startLocation = coords(0, 0);
+    let plannerSegments = []
+
+    segments.forEach(function (s: Segment) {
+        let endLocation = s.coords;
+        let segmentNorm = number(norm([startLocation.x - endLocation.x, startLocation.y - endLocation.y]));
+
+        if (segmentNorm >= 1e-18) {
+            let segment = fromGeo(s.moveId, s.startVelocity, s.endVelocity, startLocation, endLocation, limits);
+            plannerSegments.push(segment);
+            startLocation = endLocation;
+        }
+    })
     return segments;
 }
 
