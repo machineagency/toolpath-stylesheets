@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
-import { norm, number } from "mathjs";
+import { norm, number, dot } from "mathjs";
 
 import * as Plot from "@observablehq/plot";
 
@@ -88,6 +88,12 @@ interface FirstOrder {
     x: number
 }
 
+interface PlanTriplets {
+    prePlanned: Segment[],
+    halfPlanned: LineSegment[],
+    fullyPlanned: LineSegment[]
+}
+
 function coords(x: number, y: number): Coords {
     return {
         x: x,
@@ -134,6 +140,14 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
         a: acceleration,
         t: timeDuration,
         x: length
+    }
+}
+
+function planTriplets(prePlanned: Segment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): PlanTriplets {
+    return {
+        prePlanned: prePlanned,
+        halfPlanned: halfPlanned,
+        fullyPlanned: fullyPlanned
     }
 }
 
@@ -202,7 +216,7 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
-function makeTestSegment(n: number): Segment[] {
+function makeTestSegment(n: number): PlanTriplets {
     let segments: Segment[] = [];
     let arr: number[] = linspace(0, Math.PI / 2, n);
 
@@ -216,7 +230,7 @@ function makeTestSegment(n: number): Segment[] {
 
     let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2);
     let startLocation = coords(0, 0);
-    let plannerSegments = []
+    let plannerSegments: LineSegment[] = [];
 
     segments.forEach(function (s: Segment) {
         let endLocation = s.coords;
@@ -228,7 +242,39 @@ function makeTestSegment(n: number): Segment[] {
             startLocation = endLocation;
         }
     })
-    return segments;
+
+    let plannedSegments = [];
+    
+
+
+    return planTriplets(segments, plannerSegments, []);
+}
+
+function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits): LineSegment[] {
+    if (segments.length == 0) {
+        return [];
+    }
+    let prev: LineSegment = segments[0];
+    segments.forEach(function (s: LineSegment) {
+        let p = s.profile;
+        let v = limitVector(s.unit, limits.vMax);
+
+        let jv = computeJunctionVelocity(prev, s, limits);
+    })
+}
+
+function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: KinematicLimits): number | null {
+    let junctionCos = -1 * dot([s.unit.x, s.unit.y], [p.unit.x, p.unit.y]);
+
+    if (junctionCos > 0.9999) {
+        return limits.junctionSpeed;
+    } else if (junctionCos < -0.9999) {
+        return null;
+    } else {
+        let junctionVect = coords(s.unit.x - p.unit.x, s.unit.y - p.unit.y);
+        junctionVect.x /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
+
+    }
 }
 
 function linspace(start: number, stop: number, cardinality: number): number[] {
