@@ -5,6 +5,8 @@ import { norm, number, dot } from "mathjs";
 
 import * as Plot from "@observablehq/plot";
 
+import './trajectory.css'
+
 interface SegmentPlotProps {
     segments: Segment[];
 }
