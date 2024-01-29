@@ -88,8 +88,9 @@ interface FirstOrder {
     x: number
 }
 
-interface PlanTriplets {
-    prePlanned: Segment[],
+interface TrajectoryPasses {
+    locations: Segment[],
+    prePlanned: LineSegment[],
     halfPlanned: LineSegment[],
     fullyPlanned: LineSegment[]
 }
@@ -143,8 +144,9 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
     }
 }
 
-function planTriplets(prePlanned: Segment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): PlanTriplets {
+function planTriplets(locations: Segment[], prePlanned: LineSegment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): TrajectoryPasses {
     return {
+        locations: locations,
         prePlanned: prePlanned,
         halfPlanned: halfPlanned,
         fullyPlanned: fullyPlanned
@@ -216,7 +218,7 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
-function makeTestSegment(n: number): PlanTriplets {
+function makeTestSegment(n: number): TrajectoryPasses {
     let segments: Segment[] = [];
     let arr: number[] = linspace(0, Math.PI / 2, n);
 
@@ -247,7 +249,7 @@ function makeTestSegment(n: number): PlanTriplets {
     
 
 
-    return planTriplets(segments, plannerSegments, []);
+    return planTriplets(segments, plannerSegments, [], []);
 }
 
 function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits): LineSegment[] {
@@ -273,9 +275,13 @@ function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: Kinemat
     } else {
         let junctionVect = coords(s.unit.x - p.unit.x, s.unit.y - p.unit.y);
         junctionVect.x /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
+        junctionVect.y /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
 
+        let junctionAcceleration = limitValueByAxis(limits.aMax, junctionVect);
     }
 }
+
+function limitValueByAxis(limits: Coords, )
 
 function linspace(start: number, stop: number, cardinality: number): number[] {
     let arr: number[] = [];
