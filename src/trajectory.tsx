@@ -73,8 +73,8 @@ interface LineSegment {
 }
 
 interface Kinematics {
-    maxVelocity: number,
-    maxAcceleration: number,
+    vMax: number,
+    aMax: number,
     junctionSpeed: number,
     junctionDeviation: number
 }
@@ -118,8 +118,8 @@ function lineSegment(parent: number, start: Coords, end: Coords, unit: Coords,
 function kinematics(maxVelocity: number, maxAcceleration: number, 
          junctionSpeed: number, junctionDeviation: number): Kinematics {
     return {
-        maxVelocity: maxVelocity,
-        maxAcceleration: maxAcceleration,
+        vMax: maxVelocity,
+        aMax: maxAcceleration,
         junctionSpeed: junctionSpeed,
         junctionDeviation: junctionDeviation
     }
@@ -139,9 +139,19 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
 function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords, k1: Kinematics): LineSegment {
     let startVel = Math.abs(v0);
     let endVel = Math.abs(v1);
+    let delta = coords(end.x - start.x, end.y - start.y)
 
-    let delta = Math.sqrt((end.x - start.x)**2 + (end.y - start.y)**2);
+    let length = Math.sqrt((end.x - start.x)**2 + (end.y - start.y)**2);
+    let profile = normalize(startVel, endVel, null, null, length) as FirstOrder;
+    let unit = coords(delta.x / length, delta.y / length);
+    return lineSegment(parent, start, end, unit, profile, limitVector(unit, k1.aMax));
 
+}
+
+function limitVector(v: Coords, l: number): number {
+    let absV = coords(Math.abs(v.x) / l, Math.abs(v.y) / l);
+    let max = Math.max(absV.x, absV.y);
+    return 1 / max;
 }
 
 
