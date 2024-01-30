@@ -5,8 +5,14 @@ import { norm, number, dot } from "mathjs";
 
 import * as Plot from "@observablehq/plot";
 
+import './trajectory.css'
+
 interface SegmentPlotProps {
     segments: Segment[];
+}
+
+interface ProfilePlotProps {
+    lineSegments: LineSegment[];
 }
 
 function SegmentPlot({ segments }: SegmentPlotProps) {
@@ -32,21 +38,67 @@ function SegmentPlot({ segments }: SegmentPlotProps) {
     return <div ref={containerRef}/>;
 }
 
-function TrajectoryWindow() {
-    let segments = makeTestSegment(20);
-    let listItems = segments.map((segment: Segment, index: number) => {
-        return <li key={index}>
-            {segment.coords.x}, {segment.coords.y}
-        </li>
-    })
-    return (<div>
-        <h1>Test Segments</h1>
-        <SegmentPlot segments={segments}></SegmentPlot>
-    </div>)
-};
+function ProfilePlot({ lineSegments }: ProfilePlotProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
 
-function returnRandomNumber() {
-    return (Math.random() * 10).toString();
+    useEffect(() => {
+        if (lineSegments === undefined) return;
+        const cumulativeTimes = lineSegments
+            .map((ls: LineSegment) => ls.profile.t)
+            .map(((sum: number) => (value: number) => sum += value)(0))
+        const plot = Plot.plot({
+            y: {
+              grid: true,
+              label: "mm / s ( / s)"
+            },
+            marks: [
+              Plot.line(lineSegments, {
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.v0,
+                stroke: "#4e79a7"
+              }),
+              Plot.text(lineSegments, Plot.selectLast({
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.v0,
+                text: (_) => "Velocity",
+                lineAnchor: "top",
+                dy: -5
+              })),
+              Plot.line(lineSegments, {
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.a,
+                stroke: "#e15759"
+              }),
+              Plot.text(lineSegments, Plot.selectLast({
+                x: (_, i: number) => cumulativeTimes[i],
+                y: (ls: LineSegment) => ls.profile.a,
+                text: (_) => "Acceleration",
+                lineAnchor: "top",
+                dy: -5
+              }))
+            ]
+          })
+        if (containerRef.current) {
+            containerRef.current.append(plot);
+        }
+        return () => plot.remove();
+      }, [lineSegments]);
+
+    return <div ref={containerRef}/>;
+}
+
+function TrajectoryWindow() {
+    let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
+    return (<div>
+        <div className="plot-title">Locations to be visited</div>
+        <SegmentPlot segments={locations}></SegmentPlot>
+        <div className="plot-title">Pre-planned Segments</div>
+        <ProfilePlot lineSegments={prePlanned}></ProfilePlot>
+        <div className="plot-title">Half-planned Segments</div>
+        <ProfilePlot lineSegments={halfPlanned}></ProfilePlot>
+        <div className="plot-title">Fully-planned Segments</div>
+        <ProfilePlot lineSegments={fullyPlanned}></ProfilePlot>
+    </div>)
 };
 
 interface Coords {
