@@ -47,6 +47,10 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
             .map((ls: LineSegment) => ls.profile.t)
             .map(((sum: number) => (value: number) => sum += value)(0))
         const plot = Plot.plot({
+            x: {
+                grid: true,
+                label: "time (s)"
+            },
             y: {
               grid: true,
               label: "mm / s ( / s)"
