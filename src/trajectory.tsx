@@ -144,7 +144,7 @@ interface TrajectoryPasses {
     locations: Segment[],
     prePlanned: LineSegment[],
     halfPlanned: LineSegment[],
-    fullyPlanned: LineSegment[][]
+    fullyPlanned: LineSegment[]
 }
 
 function coords(x: number, y: number): Coords {
@@ -196,7 +196,7 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
     }
 }
 
-function planTriplets(locations: Segment[], prePlanned: LineSegment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[][]): TrajectoryPasses {
+function planTriplets(locations: Segment[], prePlanned: LineSegment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): TrajectoryPasses {
     return {
         locations: locations,
         prePlanned: prePlanned,
@@ -226,7 +226,7 @@ function limitVector(v: Coords, l: Coords): number {
 
 function normalize(v0: number | null, v: number | null, a: number | null, t: number | null, x: number | null): FirstOrder | null {
     let arr = [v0, v, a, t, x];
-    if ((arr.length - arr.filter(Number).length) != 2) {
+    if ((arr.length - arr.filter(element => element !== null && !isNaN(element)).length) != 2) {
         return null;
     }
 
@@ -298,31 +298,34 @@ function makeTestSegment(n: number): TrajectoryPasses {
     })
     let halfPlanned = forwardPass(plannerSegments, 0, limits);
 
-    let plannedSegments: LineSegment[][] = [];
+    let plannedSegments: LineSegment[] = [];
 
-    planSegments(plannerSegments, limits).forEach(function (s: LineSegment[]) {
+    planSegments(plannerSegments, limits).forEach(function (s: LineSegment) {
         plannedSegments.push(s);
     })
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }
 
-function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0, v1: number = 0.0): LineSegment[][] {
+function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0): LineSegment[] {
     return backwardPass(forwardPass(segs, v0, k1));
 }
 
-function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[][] {
+function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[] {
     let n = segments.length;
     let out = [];
+    let ret: LineSegment[] = [];
     let v2 = v;
     for (let i = 0; i < n; i++) {
         i = n - i - 1;
-        let s = segments[i];
         out[i] = (planSegment(segments[i], v2, true));
+        out[i].forEach(function (value: LineSegment) {
+            ret.push(value);
+        })
         v2 = out[i][0].profile.v0;
     }
 
-    return out;
+    return ret;
 }
 
 function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits): LineSegment[] {
@@ -355,12 +358,12 @@ function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimit
             seg = lineSegment(s.parent, s.start, s.end, s.unit, p, s.aMax);
         }
 
-        planSegment(s, velocityInit).forEach(function (sub: LineSegment) {
+        planSegment(seg, velocityInit).forEach(function (sub: LineSegment) {
             velocityInit = sub.profile.v;
             res.push(sub);
         });
 
-        prev = s;
+        prev = seg;
     })
 
     return res;
