@@ -337,15 +337,17 @@ function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimit
     if (segments.length == 0) {
         return res;
     }
-    let prev: LineSegment = segments[0];
+    let prev: LineSegment | null = null;
+    let velocityInit = v0;
     segments.forEach(function (s: LineSegment) {
         let p = s.profile;
         let v = limitVector(s.unit, limits.vMax);
 
-        let jv = computeJunctionVelocity(prev, s, limits);
-        let velocityInit = v0;
-        if (jv != null) {
-            velocityInit = Math.min(v0, jv);
+        if (prev != null) {
+            let jv = computeJunctionVelocity(prev, s, limits);
+            if (jv != null) {
+                velocityInit = Math.min(velocityInit, jv);
+            }
         }
 
         let changed = false;
