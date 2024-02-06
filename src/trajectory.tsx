@@ -320,24 +320,22 @@ function makeTestSegment(n: number): TrajectoryPasses {
 }
 
 function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0): LineSegment[] {
-    return backwardPass(forwardPass(segs, v0, k1));
+    return backwardPass(forwardPass(segs, v0, k1)).flat();
 }
 
-function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[] {
+function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[][] {
     let n = segments.length;
     let out = [];
-    let ret: LineSegment[] = [];
-    let v2 = v;
+    let runningV = v;
+    let reverseIndex = 0;
     for (let i = 0; i < n; i++) {
-        i = n - i - 1;
-        out[i] = (planSegment(segments[i], v2, true));
-        out[i].forEach(function (value: LineSegment) {
-            ret.push(value);
-        })
-        v2 = out[i][0].profile.v0;
+        reverseIndex = n - i - 1;
+        out[reverseIndex] = planSegment(segments[reverseIndex], runningV, true);
+        console.log(out[reverseIndex][0].profile)
+        runningV = out[reverseIndex][0].profile.v0;
     }
 
-    return ret;
+    return out;
 }
 
 function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits): LineSegment[] {
