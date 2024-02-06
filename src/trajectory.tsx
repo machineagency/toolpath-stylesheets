@@ -401,7 +401,7 @@ function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineS
         if (reverse) {
             p = normalize(null, v, -1 * a, null, p.x);
         } else {
-            p = normalize(v, null, a, dv / da, null);
+            p = normalize(v, null, a, null, s.profile.x);
         }
         return [lineSegment(s.parent, s.start, s.end, s.unit, p!, s.aMax)];
     }
