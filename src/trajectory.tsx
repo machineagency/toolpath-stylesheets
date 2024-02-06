@@ -391,7 +391,7 @@ function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineS
     }
 
     if (p.v0 <= v) {
-        [s];
+        return [s];
     }
 
     let da = a - p.a;
