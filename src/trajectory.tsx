@@ -283,7 +283,7 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
 }
 
 function makeTestSegment(n: number): TrajectoryPasses {
-    let segments: Segment[] = [];
+    let segments: Segment[] = [segment(0, 1.0, 1.0, coords(1.0, 0.0))];
     let arr: number[] = linspace(0, Math.PI / 2, n);
 
     arr.forEach(function (val: number, index: number) {
