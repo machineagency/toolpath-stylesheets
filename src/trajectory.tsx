@@ -43,9 +43,17 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
 
     useEffect(() => {
         if (lineSegments === undefined) return;
-        const cumulativeTimes = lineSegments
-            .map((ls: LineSegment) => ls.profile.t)
-            .map(((sum: number) => (value: number) => sum += value)(0))
+        const cumulativeTimes: (number | null)[] = [];
+        let soFar = 0;
+        lineSegments.forEach((ls: LineSegment) => {
+            let newTime = soFar + ls.profile.t;
+            cumulativeTimes.push(soFar);
+            cumulativeTimes.push(newTime);
+            cumulativeTimes.push(null);
+            soFar = newTime;
+        });
+        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null]).flat();
+        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null]).flat();
         const plot = Plot.plot({
             x: {
                 grid: true,
@@ -56,26 +64,26 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
               label: "mm / s ( / s)"
             },
             marks: [
-              Plot.line(lineSegments, {
+              Plot.line(cumulativeTimes, {
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (ls: LineSegment) => ls.profile.v0,
+                y: (_, i: number) => vPairs[i],
                 stroke: "#4e79a7"
               }),
-              Plot.text(lineSegments, Plot.selectLast({
+              Plot.text(cumulativeTimes, Plot.selectLast({
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (ls: LineSegment) => ls.profile.v0,
+                y: (_, i: number) => vPairs[i],
                 text: (_) => "Velocity",
                 lineAnchor: "top",
                 dy: -5
               })),
-              Plot.line(lineSegments, {
+              Plot.line(cumulativeTimes, {
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (ls: LineSegment) => ls.profile.a,
+                y: (_, i: number) => aPairs[i],
                 stroke: "#e15759"
               }),
-              Plot.text(lineSegments, Plot.selectLast({
+              Plot.text(cumulativeTimes, Plot.selectLast({
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (ls: LineSegment) => ls.profile.a,
+                y: (_, i: number) => aPairs[i],
                 text: (_) => "Acceleration",
                 lineAnchor: "top",
                 dy: -5
