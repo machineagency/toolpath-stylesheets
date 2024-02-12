@@ -2,3 +2,7 @@
     font-weight: bold;
     margin-bottom: 10px;
 }
+
+.dashboard-settings {
+    display: flex;
+}

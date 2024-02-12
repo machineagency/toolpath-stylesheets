@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
@@ -10,12 +10,41 @@ import * as Plot from "@observablehq/plot";
 
 import './trajectory.css'
 
+// TODO: redefine as IR[]
+type Toolpath = string[]
+
+// TODO: should be IR array
+interface TrajectoryWindowProps {
+    toolpath: Toolpath;
+}
+
+interface DashboardSettingsProps {
+    onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
 interface SegmentPlotProps {
     segments: Segment[];
 }
 
 interface ProfilePlotProps {
     lineSegments: LineSegment[];
+}
+
+const TOOLPATH_TABLE: Record<string, Toolpath> = {
+    testToolpath: ['M2,0,0', 'M2,10,10']
+};
+
+function DashboardSettings({ onSelect }: DashboardSettingsProps) {
+    const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
+        return <option value={tpName} key={tpName}>{tpName}</option>
+    });
+    return (
+        <div className="dashboard-settings">
+            <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
+                {toolpathsOptionElements}
+            </select>
+        </div>
+    );
 }
 
 function SegmentPlot({ segments }: SegmentPlotProps) {
@@ -101,22 +130,6 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
 
     return <div ref={containerRef}/>;
 }
-
-function TrajectoryWindow() {
-    let rect = toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 10, 5", "M2, 0, 5", "M2, 0, 0"]);
-    let { locations, prePlanned, halfPlanned, fullyPlanned} = main(lowerSBP(rect));
-    //let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
-    return (<div>
-        <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot segments={locations}></SegmentPlot>
-        <div className="plot-title">Pre-planned Segments</div>
-        <ProfilePlot lineSegments={prePlanned}></ProfilePlot>
-        <div className="plot-title">Half-planned Segments</div>
-        <ProfilePlot lineSegments={halfPlanned}></ProfilePlot>
-        <div className="plot-title">Fully-planned Segments</div>
-        <ProfilePlot lineSegments={fullyPlanned}></ProfilePlot>
-    </div>)
-};
 
 interface Coords {
     x: number,
@@ -504,7 +517,34 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
     return arr;
 }
 
-ReactDOM.render(
-    <TrajectoryWindow></TrajectoryWindow>,
-    document.getElementById("app")
-);
+function TrajectoryWindow({ toolpath }: TrajectoryWindowProps) {
+    // TODO: do all the planning using the toolpath parameter passed in the props
+    let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
+    return (<div>
+        <div className="plot-title">Locations to be visited</div>
+        <SegmentPlot segments={locations}></SegmentPlot>
+        <div className="plot-title">Pre-planned Segments</div>
+        <ProfilePlot lineSegments={prePlanned}></ProfilePlot>
+        <div className="plot-title">Half-planned Segments</div>
+        <ProfilePlot lineSegments={halfPlanned}></ProfilePlot>
+        <div className="plot-title">Fully-planned Segments</div>
+        <ProfilePlot lineSegments={fullyPlanned}></ProfilePlot>
+    </div>)
+};
+
+function App() {
+    const [currentToolpath, setCurrentToolpath] = useState<Toolpath>([]);
+    const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const toolpathName = event.target.value;
+        const toolpath = TOOLPATH_TABLE[toolpathName];
+        setCurrentToolpath(toolpath);
+    };
+    return (
+        <div>
+            <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
+            <TrajectoryWindow toolpath={currentToolpath}></TrajectoryWindow>
+        </div>
+    );
+}
+
+ReactDOM.render(<App></App>, document.getElementById("app"));
