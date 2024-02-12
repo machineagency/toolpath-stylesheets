@@ -365,7 +365,7 @@ function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0
 function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[][] {
     let out = [];
     let runningV = v;
-    for (let i = segments.length - 1; i > 0; i--) {
+    for (let i = segments.length - 1; i >= 0; i--) {
         out[i] = planSegment(segments[i], runningV, true);
         runningV = out[i][0].profile.v0;
     }
