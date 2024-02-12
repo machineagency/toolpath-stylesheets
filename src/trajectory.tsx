@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
+import { IR } from './type-utils';
+import { lowerSBP } from './ir';
+import { toolpath } from './type-utils';
 
 import * as Plot from "@observablehq/plot";
 
@@ -100,7 +103,9 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
 }
 
 function TrajectoryWindow() {
-    let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
+    let rect = toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 10, 5", "M2, 0, 5", "M2, 0, 0"]);
+    let { locations, prePlanned, halfPlanned, fullyPlanned} = main(lowerSBP(rect));
+    //let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     return (<div>
         <div className="plot-title">Locations to be visited</div>
         <SegmentPlot segments={locations}></SegmentPlot>
@@ -307,14 +312,48 @@ function makeTestSegment(n: number): TrajectoryPasses {
             plannerSegments.push(segment);
             startLocation = endLocation;
         }
-    })
+    });
+
     let halfPlanned = forwardPass(plannerSegments, 0, limits);
 
     let plannedSegments: LineSegment[] = [];
 
     planSegments(plannerSegments, limits).forEach(function (s: LineSegment) {
         plannedSegments.push(s);
-    })
+    });
+
+    return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
+}
+
+function main(irs: IR[]): TrajectoryPasses {
+    let segments: Segment[] = [];
+    irs.forEach(function (ir: IR, index: number) {
+        let seg = segment(0, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
+        segments.push(seg);
+    });
+
+    let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2); // can change later
+    let startLocation = segments[0].coords;
+    let plannerSegments: LineSegment[] = [];
+
+    segments.forEach(function (s: Segment) {
+        let endLocation = s.coords;
+        let segmentNorm = number(norm([startLocation.x - endLocation.x, startLocation.y - endLocation.y]));
+
+        if (segmentNorm >= 1e-18) {
+            let segment = fromGeo(s.moveId, s.startVelocity, s.endVelocity, startLocation, endLocation, limits);
+            plannerSegments.push(segment);
+            startLocation = endLocation;
+        }
+    });
+
+    let halfPlanned = forwardPass(plannerSegments, 0, limits);
+
+    let plannedSegments: LineSegment[] = [];
+
+    planSegments(plannerSegments, limits).forEach(function (s: LineSegment) {
+        plannedSegments.push(s);
+    });
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }

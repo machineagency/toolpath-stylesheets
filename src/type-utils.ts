@@ -9,6 +9,14 @@ export interface Toolpath {
     instructions: Instruction[];
 }
 
+export function toolpath(isa: ISA, instructions: Instruction[]): Toolpath {
+    return {
+        isa: isa,
+        instructions: instructions
+    }
+
+}
+
 export type Operation = "move";
 export interface IR {
     op: Operation;
