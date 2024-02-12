@@ -324,17 +324,12 @@ function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0
 }
 
 function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[][] {
-    let n = segments.length;
     let out = [];
     let runningV = v;
-    let reverseIndex = 0;
-    for (let i = 0; i < n; i++) {
-        reverseIndex = n - i - 1;
-        out[reverseIndex] = planSegment(segments[reverseIndex], runningV, true);
-        console.log(out[reverseIndex][0].profile)
-        runningV = out[reverseIndex][0].profile.v0;
+    for (let i = segments.length - 1; i > 0; i--) {
+        out[i] = planSegment(segments[i], runningV, true);
+        runningV = out[i][0].profile.v0;
     }
-
     return out;
 }
 
