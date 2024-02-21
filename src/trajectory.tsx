@@ -3,19 +3,21 @@ import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
 import { IR } from './type-utils';
-import { lowerSBP } from './ir';
-import { toolpath } from './type-utils';
+import { lowerEBB, lowerGCode, lowerSBP } from './ir';
+import { toolpath, Toolpath } from './type-utils';
+import { exampleToolpaths } from './example-toolpaths';
 
 import * as Plot from "@observablehq/plot";
 
 import './trajectory.css'
 
 // TODO: redefine as IR[]
-type Toolpath = string[]
+// Note: does not make sense to redefine toolpath type here, since it is already defined in type-utils, so I just imported it over
+//type Toolpath = IR[]
 
 // TODO: should be IR array
 interface TrajectoryWindowProps {
-    toolpath: Toolpath;
+    toolpath: Toolpath | null;
 }
 
 interface DashboardSettingsProps {
@@ -31,7 +33,17 @@ interface ProfilePlotProps {
 }
 
 const TOOLPATH_TABLE: Record<string, Toolpath> = {
-    testToolpath: ['M2,0,0', 'M2,10,10']
+    testToolpath: toolpath("sbp", ["M2, 0, 0", "M2, 10, 10"]),
+    rectangle: toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 10, 5", "M2, 0, 5", "M2, 0, 0"]),
+    triangle: toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 5, 5", "M2, 0, 0"]),
+    star: toolpath("sbp", ["M2, 50, 0", "M2, 65, 35", "M2, 100, 35", "M2, 75, 60", "M2, 90, 95", "M2, 50, 75",
+                   "M2, 10, 95", "M2, 25, 60", "M2, 0, 35", "M2, 35, 35", "M2, 50, 0"]),
+    wave: exampleToolpaths.gCodeWave,
+    box: exampleToolpaths.ebbBox,
+    signature: exampleToolpaths.ebbSignature,
+    gears: exampleToolpaths.gears
+
+
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
@@ -300,6 +312,7 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
+/*
 function makeTestSegment(n: number): TrajectoryPasses {
     let segments: Segment[] = [segment(0, 1.0, 1.0, coords(1.0, 0.0))];
     let arr: number[] = linspace(0, Math.PI / 2, n);
@@ -337,14 +350,24 @@ function makeTestSegment(n: number): TrajectoryPasses {
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }
+*/
 
-function main(irs: IR[]): TrajectoryPasses {
+function main(tp: Toolpath): TrajectoryPasses {
+    let irs;
+    // handles lowering
+    if (tp.isa == "ebb") {
+        irs = lowerEBB(tp);
+    } else if (tp.isa == "sbp") {
+        irs = lowerSBP(tp);
+    } else {
+        irs = lowerGCode(tp);
+    }
+    console.log(irs);
     let segments: Segment[] = [];
     irs.forEach(function (ir: IR, index: number) {
-        let seg = segment(0, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
+        let seg = segment(index, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
         segments.push(seg);
     });
-
     let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2); // can change later
     let startLocation = segments[0].coords;
     let plannerSegments: LineSegment[] = [];
@@ -507,6 +530,7 @@ function limitValueByAxis(limits: Coords, vector: Coords): number {
     return limitValue;
 }
 
+/*
 function linspace(start: number, stop: number, cardinality: number): number[] {
     let arr: number[] = [];
     let step = (stop - start) / (cardinality - 1);
@@ -516,10 +540,28 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 
     return arr;
 }
+*/
 
 function TrajectoryWindow({ toolpath }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
-    let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
+    // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
+    if (!toolpath) {
+        // If no toolpath is selected, render empty divs for the graphs
+        return (
+            <div>
+                <div className="plot-title">Locations to be visited</div>
+                <div className="empty-plot">No toolpath selected</div>
+                <div className="plot-title">Pre-planned Segments</div>
+                <div className="empty-plot">No toolpath selected</div>
+                <div className="plot-title">Half-planned Segments</div>
+                <div className="empty-plot">No toolpath selected</div>
+                <div className="plot-title">Fully-planned Segments</div>
+                <div className="empty-plot">No toolpath selected</div>
+            </div>
+        );
+    }
+
+    let { locations, prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
     return (<div>
         <div className="plot-title">Locations to be visited</div>
         <SegmentPlot segments={locations}></SegmentPlot>
@@ -533,7 +575,7 @@ function TrajectoryWindow({ toolpath }: TrajectoryWindowProps) {
 };
 
 function App() {
-    const [currentToolpath, setCurrentToolpath] = useState<Toolpath>([]);
+    const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(null);
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
