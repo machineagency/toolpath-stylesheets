@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
@@ -11,17 +13,19 @@ import * as Plot from "@observablehq/plot";
 
 import './trajectory.css'
 
-// TODO: redefine as IR[]
-// Note: does not make sense to redefine toolpath type here, since it is already defined in type-utils, so I just imported it over
-//type Toolpath = IR[]
-
-// TODO: should be IR array
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
+    min: number;
+    max: number;
 }
 
 interface DashboardSettingsProps {
     onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
+interface RangeSliderProps {
+    max: number;
+    onChange: (newRange: number[] | number) => void;
 }
 
 interface SegmentPlotProps {
@@ -30,6 +34,8 @@ interface SegmentPlotProps {
 
 interface ProfilePlotProps {
     lineSegments: LineSegment[];
+    min: number;
+    max: number;
 }
 
 const TOOLPATH_TABLE: Record<string, Toolpath> = {
@@ -59,6 +65,37 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     );
 }
 
+function RangeSlider({ max, onChange }: RangeSliderProps) {
+    const [range, setRange] = useState<number[]>([0, max]);
+
+    const handleRangeChange = (newRange: number | number[]) => {
+        setRange(newRange as number[]);
+        onChange(newRange);
+    };
+
+    useEffect(() => {
+        if (max) {
+            setRange([0, max]);
+        }
+    }, [max]);
+
+    return (
+        <div className="range-slider">
+            <Slider
+              range
+              min={0}
+              max={max}
+              value={range}
+              onChange={handleRangeChange}
+            />
+            <div className="range-label">
+                Range: {range[0]} - {range[1]}
+            </div>
+
+        </div>
+    )
+}
+
 function SegmentPlot({ segments }: SegmentPlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -82,12 +119,12 @@ function SegmentPlot({ segments }: SegmentPlotProps) {
     return <div ref={containerRef}/>;
 }
 
-function ProfilePlot({ lineSegments }: ProfilePlotProps) {
+function ProfilePlot({ lineSegments, min, max }: ProfilePlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (lineSegments === undefined) return;
-        const cumulativeTimes: (number | null)[] = [];
+        let cumulativeTimes: (number | null)[] = [];
         let soFar = 0;
         lineSegments.forEach((ls: LineSegment) => {
             let newTime = soFar + ls.profile.t;
@@ -96,12 +133,16 @@ function ProfilePlot({ lineSegments }: ProfilePlotProps) {
             cumulativeTimes.push(null);
             soFar = newTime;
         });
-        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null]).flat();
-        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null]).flat();
+        //console.log(lineSegments);
+        cumulativeTimes = cumulativeTimes.slice(min, max);
+        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null]).flat().slice(min, max);
+        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null]).flat().slice(min, max);
+        console.log(vPairs);
+        //console.log(aPairs);
         const plot = Plot.plot({
             x: {
                 grid: true,
-                label: "time (s)"
+                label: "time (s)",
             },
             y: {
               grid: true,
@@ -362,7 +403,7 @@ function main(tp: Toolpath): TrajectoryPasses {
     } else {
         irs = lowerGCode(tp);
     }
-    console.log(irs);
+    //console.log(irs);
     let segments: Segment[] = [];
     irs.forEach(function (ir: IR, index: number) {
         let seg = segment(index, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
@@ -542,7 +583,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -566,11 +607,11 @@ function TrajectoryWindow({ toolpath }: TrajectoryWindowProps) {
         <div className="plot-title">Locations to be visited</div>
         <SegmentPlot segments={locations}></SegmentPlot>
         <div className="plot-title">Pre-planned Segments</div>
-        <ProfilePlot lineSegments={prePlanned}></ProfilePlot>
+        <ProfilePlot lineSegments={prePlanned} min={min} max={max}></ProfilePlot>
         <div className="plot-title">Half-planned Segments</div>
-        <ProfilePlot lineSegments={halfPlanned}></ProfilePlot>
+        <ProfilePlot lineSegments={halfPlanned} min={min * 3} max={max * 3}></ProfilePlot>
         <div className="plot-title">Fully-planned Segments</div>
-        <ProfilePlot lineSegments={fullyPlanned}></ProfilePlot>
+        <ProfilePlot lineSegments={fullyPlanned} min={min * 9} max={max * 9}></ProfilePlot>
     </div>)
 };
 
@@ -581,10 +622,37 @@ function App() {
         const toolpath = TOOLPATH_TABLE[toolpathName];
         setCurrentToolpath(toolpath);
     };
+
+    let max = 0;
+    if (currentToolpath != null) {
+        max = currentToolpath.instructions.length - 1;
+    }
+
+    const [minValue, setMinValue] = useState<number>(0);
+    const [maxValue, setMaxValue] = useState<number>(0);
+
+    
+    useEffect(() => {
+        // Update maxValue whenever currentToolpath changes
+        setMaxValue(max);
+    }, [max, currentToolpath]);
+    
+
+    const handleRangeChange = (newRange: number[] | number) => {
+        let range = newRange as number[];
+        setMinValue(range[0]);
+        setMaxValue(range[1]);
+    }
+
     return (
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
-            <TrajectoryWindow toolpath={currentToolpath}></TrajectoryWindow>
+            <RangeSlider max={max} onChange={handleRangeChange}></RangeSlider>
+            <TrajectoryWindow 
+              toolpath={currentToolpath}
+              min={minValue}
+              max={maxValue}>
+            </TrajectoryWindow>
         </div>
     );
 }
