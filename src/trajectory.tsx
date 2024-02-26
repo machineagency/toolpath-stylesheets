@@ -673,8 +673,7 @@ function App() {
             <TrajectoryWindow 
               toolpath={currentToolpath}
               min={minValue}
-              max={maxValue}>
-            </TrajectoryWindow>
+              max={maxValue}/>
         </div>
     );
 }
