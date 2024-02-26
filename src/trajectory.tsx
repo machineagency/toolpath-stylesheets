@@ -19,6 +19,7 @@ interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     min: number;
     max: number;
+    onMaxChange: (max: number) => void;
 }
 
 interface DashboardSettingsProps {
@@ -30,13 +31,8 @@ interface RangeSliderProps {
     onChange: (newRange: number[] | number) => void;
 }
 
-interface SegmentPlotProps {
-    segments: Segment[];
-    min: number;
-    max: number;
-}
 
-interface ProfilePlotProps {
+interface PlotProps {
     lineSegments: LineSegment[];
     min: number;
     max: number;
@@ -102,23 +98,23 @@ function RangeSlider({ max, onChange }: RangeSliderProps) {
     )
 }
 
-function SegmentPlot({ segments, min, max }: SegmentPlotProps) {
+function SegmentPlot({ lineSegments, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (segments === undefined) return;
+        if (lineSegments === undefined) return;
         const plot = Plot.plot({
           grid: true,
           marks: [
-            Plot.dot(segments, {
-                x: (d: Segment) => d.coords.x,
-                y: (d: Segment) => d.coords.y,
+            Plot.dot(lineSegments, {
+                x: (d: LineSegment) => d.start.x,
+                y: (d: LineSegment) => d.start.y,
                 r: 1
             }),
-            Plot.line(segments, {
+            Plot.line(lineSegments, {
                 filter: (_, i) => i <= max && i >= min,
-                x: (d: Segment) => d.coords.x,
-                y: (d: Segment) => d.coords.y,
+                x: (d: LineSegment) => d.start.x,
+                y: (d: LineSegment) => d.start.y,
                 stroke: "red"
             })
           ]
@@ -127,12 +123,12 @@ function SegmentPlot({ segments, min, max }: SegmentPlotProps) {
             containerRef.current.append(plot);
         }
         return () => plot.remove();
-      }, [segments]);
+      }, [lineSegments]);
 
     return <div ref={containerRef}/>;
 }
 
-function ProfilePlot({ lineSegments, min, max }: ProfilePlotProps) {
+function ProfilePlot({ lineSegments, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -595,7 +591,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, min, max, onMaxChange }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -619,21 +615,27 @@ function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
         );
     }
 
-    let { locations, prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
+    let { prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
+
+    const len = fullyPlanned.length;
+    useEffect(() => {
+        onMaxChange(len);
+    }, [len, onMaxChange]);
+
     return (<div>
         <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot segments={locations} min={min} max={max}></SegmentPlot>
+        <SegmentPlot lineSegments={fullyPlanned} min={min} max={max}></SegmentPlot>
 
         {DEBUG && (
             <React.Fragment>
             <div className="plot-title">Pre-planned Segments</div>
             <ProfilePlot lineSegments={prePlanned} min={min} max={max}></ProfilePlot>
             <div className="plot-title">Half-planned Segments</div>
-            <ProfilePlot lineSegments={halfPlanned} min={min * 3} max={max * 3}></ProfilePlot>
+            <ProfilePlot lineSegments={halfPlanned} min={min} max={max}></ProfilePlot>
             </React.Fragment>
         )}
         <div className="plot-title">Fully-planned Segments</div>
-        <ProfilePlot lineSegments={fullyPlanned} min={min * 9} max={max * 9}></ProfilePlot>
+        <ProfilePlot lineSegments={fullyPlanned} min={min} max={max}></ProfilePlot>
     </div>)
 };
 
@@ -645,20 +647,14 @@ function App() {
         setCurrentToolpath(toolpath);
     };
 
-    let max = 0;
-    if (currentToolpath != null) {
-        max = currentToolpath.instructions.length - 1;
-    }
+    const [max, setMax] = useState<number>(0);
+
+    const handleMaxChange = (newMax: number) => {
+        setMax(newMax)
+    };
 
     const [minValue, setMinValue] = useState<number>(0);
     const [maxValue, setMaxValue] = useState<number>(0);
-
-    
-    useEffect(() => {
-        // Update maxValue whenever currentToolpath changes
-        setMaxValue(max);
-    }, [max, currentToolpath]);
-    
 
     const handleRangeChange = (newRange: number[] | number) => {
         let range = newRange as number[];
@@ -672,6 +668,7 @@ function App() {
             <RangeSlider max={max} onChange={handleRangeChange}></RangeSlider>
             <TrajectoryWindow 
               toolpath={currentToolpath}
+              onMaxChange={handleMaxChange}
               min={minValue}
               max={maxValue}/>
         </div>
