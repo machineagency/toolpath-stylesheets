@@ -103,15 +103,23 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
         const plot = Plot.plot({
           grid: true,
           marks: [
-            Plot.dot(lineSegments, {
-                x: (d: LineSegment) => d.start.x,
-                y: (d: LineSegment) => d.start.y,
-                r: 1
+            Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+                filter: (_, i) => i <= max * 2 && i >= min * 2,
+                x: (d: Coords) => {
+                    return d.x;
+                },
+                y: (d: Coords) => {
+                    return d.y;
+                }
             }),
-            Plot.line(lineSegments, {
-                filter: (_, i) => i <= max && i >= min,
-                x: (d: LineSegment) => d.start.x,
-                y: (d: LineSegment) => d.start.y,
+            Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+                filter: (_, i) => i <= max * 2 && i >= min * 2,
+                x: (d: Coords) => {
+                    return d.x;
+                },
+                y: (d: Coords) => {
+                    return d.y;
+                },
                 stroke: "red"
             })
           ]
@@ -579,6 +587,7 @@ function TrajectoryWindow({ toolpath, min, max, onMaxChange }: TrajectoryWindowP
 
     let { prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
 
+    // last toolpath needs both 
     const len = fullyPlanned.length;
     useEffect(() => {
         onMaxChange(len);
@@ -610,14 +619,21 @@ function App() {
         setCurrentToolpath(toolpath);
     };
 
+    // max length of the LineSegment[]
     const [max, setMax] = useState<number>(0);
+    // slider min and max values
+    const [minValue, setMinValue] = useState<number>(0);
+    const [maxValue, setMaxValue] = useState<number>(0);
+
+    useEffect(() => {
+        setMaxValue(max);
+    }, [max]);
 
     const handleMaxChange = (newMax: number) => {
         setMax(newMax)
     };
 
-    const [minValue, setMinValue] = useState<number>(0);
-    const [maxValue, setMaxValue] = useState<number>(0);
+    console.log(max);
 
     const handleRangeChange = (newRange: number[] | number) => {
         let range = newRange as number[];
