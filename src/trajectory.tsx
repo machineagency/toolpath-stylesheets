@@ -13,6 +13,8 @@ import * as Plot from "@observablehq/plot";
 
 import './trajectory.css'
 
+const DEBUG: boolean = false;
+
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     min: number;
@@ -30,6 +32,8 @@ interface RangeSliderProps {
 
 interface SegmentPlotProps {
     segments: Segment[];
+    min: number;
+    max: number;
 }
 
 interface ProfilePlotProps {
@@ -53,9 +57,11 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
-    const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
+    const toolpathsOptionElements = [
+        <option value="" key="blank">Select a Toolpath</option>,
+        Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
-    });
+    })];
     return (
         <div className="dashboard-settings">
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
@@ -96,7 +102,7 @@ function RangeSlider({ max, onChange }: RangeSliderProps) {
     )
 }
 
-function SegmentPlot({ segments }: SegmentPlotProps) {
+function SegmentPlot({ segments, min, max }: SegmentPlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -107,6 +113,12 @@ function SegmentPlot({ segments }: SegmentPlotProps) {
             Plot.dot(segments, {
                 x: (d: Segment) => d.coords.x,
                 y: (d: Segment) => d.coords.y
+            }),
+            Plot.dot(segments, {
+                filter: (d, i) => i < max && i >= min,
+                x: (d: Segment) => d.coords.x,
+                y: (d: Segment) => d.coords.y,
+                stroke: "red"
             })
           ]
         });
@@ -133,12 +145,11 @@ function ProfilePlot({ lineSegments, min, max }: ProfilePlotProps) {
             cumulativeTimes.push(null);
             soFar = newTime;
         });
-        //console.log(lineSegments);
+
         cumulativeTimes = cumulativeTimes.slice(min, max);
         const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null]).flat().slice(min, max);
         const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null]).flat().slice(min, max);
-        console.log(vPairs);
-        //console.log(aPairs);
+
         const plot = Plot.plot({
             x: {
                 grid: true,
@@ -592,10 +603,15 @@ function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
             <div>
                 <div className="plot-title">Locations to be visited</div>
                 <div className="empty-plot">No toolpath selected</div>
-                <div className="plot-title">Pre-planned Segments</div>
-                <div className="empty-plot">No toolpath selected</div>
-                <div className="plot-title">Half-planned Segments</div>
-                <div className="empty-plot">No toolpath selected</div>
+
+                {DEBUG && (
+                    <React.Fragment>
+                    <div className="plot-title">Pre-planned Segments</div>
+                    <div className="empty-plot">No toolpath selected</div>
+                    <div className="plot-title">Half-planned Segments</div>
+                    <div className="empty-plot">No toolpath selected</div>
+                    </React.Fragment>
+                )}
                 <div className="plot-title">Fully-planned Segments</div>
                 <div className="empty-plot">No toolpath selected</div>
             </div>
@@ -605,11 +621,16 @@ function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
     let { locations, prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
     return (<div>
         <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot segments={locations}></SegmentPlot>
-        <div className="plot-title">Pre-planned Segments</div>
-        <ProfilePlot lineSegments={prePlanned} min={min} max={max}></ProfilePlot>
-        <div className="plot-title">Half-planned Segments</div>
-        <ProfilePlot lineSegments={halfPlanned} min={min * 3} max={max * 3}></ProfilePlot>
+        <SegmentPlot segments={locations} min={min} max={max}></SegmentPlot>
+
+        {DEBUG && (
+            <React.Fragment>
+            <div className="plot-title">Pre-planned Segments</div>
+            <ProfilePlot lineSegments={prePlanned} min={min} max={max}></ProfilePlot>
+            <div className="plot-title">Half-planned Segments</div>
+            <ProfilePlot lineSegments={halfPlanned} min={min * 3} max={max * 3}></ProfilePlot>
+            </React.Fragment>
+        )}
         <div className="plot-title">Fully-planned Segments</div>
         <ProfilePlot lineSegments={fullyPlanned} min={min * 9} max={max * 9}></ProfilePlot>
     </div>)
