@@ -112,10 +112,11 @@ function SegmentPlot({ segments, min, max }: SegmentPlotProps) {
           marks: [
             Plot.dot(segments, {
                 x: (d: Segment) => d.coords.x,
-                y: (d: Segment) => d.coords.y
+                y: (d: Segment) => d.coords.y,
+                r: 1
             }),
-            Plot.dot(segments, {
-                filter: (d, i) => i < max && i >= min,
+            Plot.line(segments, {
+                filter: (_, i) => i <= max && i >= min,
                 x: (d: Segment) => d.coords.x,
                 y: (d: Segment) => d.coords.y,
                 stroke: "red"
