@@ -42,22 +42,19 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
     testToolpath: toolpath("sbp", ["M2, 0, 0", "M2, 10, 10"]),
     rectangle: toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 10, 5", "M2, 0, 5", "M2, 0, 0"]),
     triangle: toolpath("sbp", ["M2, 0, 0", "M2, 10, 0", "M2, 5, 5", "M2, 0, 0"]),
-    star: toolpath("sbp", ["M2, 50, 0", "M2, 65, 35", "M2, 100, 35", "M2, 75, 60", "M2, 90, 95", "M2, 50, 75",
-                   "M2, 10, 95", "M2, 25, 60", "M2, 0, 35", "M2, 35, 35", "M2, 50, 0"]),
+    star: toolpath("sbp", ["M2, 50, 0", "M2, 65, 35", "M2, 100, 35", "M2, 75, 60",
+                    "M2, 90, 95", "M2, 50, 75", "M2, 10, 95", "M2, 25, 60", "M2, 0, 35",
+                    "M2, 35, 35", "M2, 50, 0"]),
     wave: exampleToolpaths.gCodeWave,
     box: exampleToolpaths.ebbBox,
     signature: exampleToolpaths.ebbSignature,
     gears: exampleToolpaths.gears
-
-
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
-    const toolpathsOptionElements = [
-        <option value="" key="blank">Select a Toolpath</option>,
-        Object.keys(TOOLPATH_TABLE).map(tpName => {
+    const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
-    })];
+    });
     return (
         <div className="dashboard-settings">
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
@@ -144,8 +141,10 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
         });
 
         cumulativeTimes = cumulativeTimes.slice(min, max);
-        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null]).flat().slice(min, max);
-        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null]).flat().slice(min, max);
+        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null])
+            .flat().slice(min, max);
+        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null])
+            .flat().slice(min, max);
 
         const plot = Plot.plot({
             x: {
@@ -266,7 +265,7 @@ function lineSegment(parent: number, start: Coords, end: Coords, unit: Coords,
     }
 }
 
-function kinematicLimits(maxVelocity: Coords, maxAcceleration: Coords, 
+function kinematicLimits(maxVelocity: Coords, maxAcceleration: Coords,
          junctionSpeed: number, junctionDeviation: number): KinematicLimits {
     return {
         vMax: maxVelocity,
@@ -287,7 +286,8 @@ function firstOrder(initialVelocity: number, finalVelocity: number, acceleration
     }
 }
 
-function planTriplets(locations: Segment[], prePlanned: LineSegment[], halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): TrajectoryPasses {
+function planTriplets(locations: Segment[], prePlanned: LineSegment[],
+    halfPlanned: LineSegment[], fullyPlanned: LineSegment[]): TrajectoryPasses {
     return {
         locations: locations,
         prePlanned: prePlanned,
@@ -296,7 +296,8 @@ function planTriplets(locations: Segment[], prePlanned: LineSegment[], halfPlann
     }
 }
 
-function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords, k1: KinematicLimits): LineSegment {
+function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords,
+    k1: KinematicLimits): LineSegment {
     let startVel = Math.abs(v0);
     let endVel = Math.abs(v1);
     let delta = coords(end.x - start.x, end.y - start.y)
@@ -315,7 +316,8 @@ function limitVector(v: Coords, l: Coords): number {
 }
 
 
-function normalize(v0: number | null, v: number | null, a: number | null, t: number | null, x: number | null): FirstOrder | null {
+function normalize(v0: number | null, v: number | null, a: number | null,
+                    t: number | null, x: number | null): FirstOrder | null {
     let arr = [v0, v, a, t, x];
     if ((arr.length - arr.filter(element => element !== null && !isNaN(element)).length) != 2) {
         return null;
@@ -360,46 +362,6 @@ function normalize(v0: number | null, v: number | null, a: number | null, t: num
     let time = (v - v0!) / a!;
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
-
-/*
-function makeTestSegment(n: number): TrajectoryPasses {
-    let segments: Segment[] = [segment(0, 1.0, 1.0, coords(1.0, 0.0))];
-    let arr: number[] = linspace(0, Math.PI / 2, n);
-
-    arr.forEach(function (val: number, index: number) {
-        let seg = segment(index + 1, 2.0, 2.0, coords(Math.cos(val), Math.sin(val)));
-        segments.push(seg);
-    });
-
-    let end: Segment = segment(n + 1, 3.0, 3.0, coords(0, -5));
-    segments.push(end);
-
-    let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2);
-    let startLocation = coords(0, 0);
-    let plannerSegments: LineSegment[] = [];
-
-    segments.forEach(function (s: Segment) {
-        let endLocation = s.coords;
-        let segmentNorm = number(norm([startLocation.x - endLocation.x, startLocation.y - endLocation.y]));
-
-        if (segmentNorm >= 1e-18) {
-            let segment = fromGeo(s.moveId, s.startVelocity, s.endVelocity, startLocation, endLocation, limits);
-            plannerSegments.push(segment);
-            startLocation = endLocation;
-        }
-    });
-
-    let halfPlanned = forwardPass(plannerSegments, 0, limits);
-
-    let plannedSegments: LineSegment[] = [];
-
-    planSegments(plannerSegments, limits).forEach(function (s: LineSegment) {
-        plannedSegments.push(s);
-    });
-
-    return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
-}
-*/
 
 function main(tp: Toolpath): TrajectoryPasses {
     let irs;
@@ -640,7 +602,8 @@ function TrajectoryWindow({ toolpath, min, max, onMaxChange }: TrajectoryWindowP
 };
 
 function App() {
-    const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(null);
+    const defaultToolpath = TOOLPATH_TABLE["testToolpath"];
+    const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
