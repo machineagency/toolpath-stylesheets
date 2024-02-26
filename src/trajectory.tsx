@@ -57,11 +57,9 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
-    const toolpathsOptionElements = [
-        <option value="" key="blank">Select a Toolpath</option>,
-        Object.keys(TOOLPATH_TABLE).map(tpName => {
+    const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
-    })];
+    });
     return (
         <div className="dashboard-settings">
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
@@ -638,7 +636,8 @@ function TrajectoryWindow({ toolpath, min, max }: TrajectoryWindowProps) {
 };
 
 function App() {
-    const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(null);
+    const defaultToolpath = TOOLPATH_TABLE["testToolpath"];
+    const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
