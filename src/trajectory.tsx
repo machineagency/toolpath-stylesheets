@@ -381,7 +381,6 @@ function main(tp: Toolpath): TrajectoryPasses {
     } else {
         irs = lowerGCode(tp);
     }
-    //console.log(irs);
     let segments: Segment[] = [];
     irs.forEach(function (ir: IR, index: number) {
         let seg = segment(index, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
@@ -632,8 +631,6 @@ function App() {
     const handleMaxChange = (newMax: number) => {
         setMax(newMax)
     };
-
-    console.log(max);
 
     const handleRangeChange = (newRange: number[] | number) => {
         let range = newRange as number[];
