@@ -382,7 +382,13 @@ function main(tp: Toolpath): TrajectoryPasses {
         irs = lowerGCode(tp);
     }
     let segments: Segment[] = [];
+    let isNullMoveCommand = (ir: IR) => {
+        return ir.op === "move" && (ir.args.x === null || ir.args.y === null);
+    }
     irs.forEach(function (ir: IR, index: number) {
+        if (isNullMoveCommand(ir)) {
+            return;
+        }
         let seg = segment(index, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
         segments.push(seg);
     });
