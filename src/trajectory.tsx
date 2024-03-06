@@ -104,13 +104,13 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
           grid: true,
           marks: [
             Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                filter: (_, i) => i <= max * 2 && i >= min * 2,
                 x: (d: Coords) => {
                     return d.x;
                 },
                 y: (d: Coords) => {
                     return d.y;
-                }
+                },
+                r: 1
             }),
             Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
                 filter: (_, i) => i <= max * 2 && i >= min * 2,
