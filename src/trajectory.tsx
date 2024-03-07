@@ -148,11 +148,11 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
             soFar = newTime;
         });
 
-        cumulativeTimes = cumulativeTimes.slice(min, max);
+        cumulativeTimes = cumulativeTimes.slice(min * 3, max * 3);
         const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null])
-            .flat().slice(min, max);
+            .flat().slice(min * 3, max * 3);
         const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null])
-            .flat().slice(min, max);
+            .flat().slice(min * 3, max * 3);
 
         const plot = Plot.plot({
             x: {
