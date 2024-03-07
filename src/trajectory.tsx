@@ -407,39 +407,37 @@ function main(tp: Toolpath): TrajectoryPasses {
         }
     });
 
-    let halfPlanned = forwardPass(plannerSegments, 0, limits);
+    let halfPlanned = [... forwardPass(plannerSegments, 0, limits)];
 
-    let plannedSegments: LineSegment[] = [];
-
-    planSegments(plannerSegments, limits).forEach(function (s: LineSegment) {
-        plannedSegments.push(s);
-    });
+    let plannedSegments = [...planSegments(plannerSegments, limits)];
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }
 
-function planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0): LineSegment[] {
-    return backwardPass(forwardPass(segs, v0, k1)).flat();
+function* planSegments(segs: LineSegment[], k1: KinematicLimits, v0: number = 0.0) {
+    for (let chunk of backwardPass([...forwardPass(segs, v0, k1)])) {
+        yield* chunk;
+    }
 }
 
-function backwardPass(segments: LineSegment[], v: number = 0): LineSegment[][] {
+function backwardPass(segments: LineSegment[], v: number = 0) {
     let out = [];
     let runningV = v;
     for (let i = segments.length - 1; i >= 0; i--) {
-        out[i] = planSegment(segments[i], runningV, true);
+        out[i] = [...planSegment(segments[i], runningV, true)];
         runningV = out[i][0].profile.v0;
     }
     return out;
 }
 
-function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits): LineSegment[] {
+function* forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimits) {
     let res: LineSegment[] = [];
     if (segments.length == 0) {
         return res;
     }
     let prev: LineSegment | null = null;
     let velocityInit = v0;
-    segments.forEach(function (s: LineSegment) {
+    for (let s of segments) {
         let p = s.profile;
         let v = limitVector(s.unit, limits.vMax);
 
@@ -464,18 +462,18 @@ function forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimit
             seg = lineSegment(s.parent, s.start, s.end, s.unit, p, s.aMax);
         }
 
-        planSegment(seg, velocityInit).forEach(function (sub: LineSegment) {
+        for (let sub of planSegment(seg, velocityInit)) {
             velocityInit = sub.profile.v;
-            res.push(sub);
-        });
+            yield sub;
+        }
 
         prev = seg;
-    })
+    }
 
     return res;
 }
 
-function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineSegment[] {
+function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
     let a = s.aMax;
     let p;
     if (!reverse) {
@@ -485,7 +483,8 @@ function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineS
     }
 
     if (p.v0 <= v) {
-        return [s];
+        yield s;
+        return;
     }
 
     let da = a - p.a;
@@ -497,7 +496,8 @@ function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineS
         } else {
             p = normalize(v, null, a, null, s.profile.x);
         }
-        return [lineSegment(s.parent, s.start, s.end, s.unit, p!, s.aMax)];
+        yield lineSegment(s.parent, s.start, s.end, s.unit, p!, s.aMax);
+        return;
     }
 
     let firstProfile = normalize(v, null, a, dv / da, null) as FirstOrder;
@@ -512,8 +512,8 @@ function planSegment(s: LineSegment, v: number, reverse: boolean = false): LineS
 
     let crossing = coords(s.start.x + s.unit.x * firstProfile.x, s.start.y + s.unit.y * firstProfile.x);
 
-    return [lineSegment(s.parent, s.start, crossing, s.unit, firstProfile, s.aMax),
-            lineSegment(s.parent, crossing, s.end, s.unit, secondProfile, s.aMax)];
+    yield lineSegment(s.parent, s.start, crossing, s.unit, firstProfile, s.aMax);
+    yield lineSegment(s.parent, crossing, s.end, s.unit, secondProfile, s.aMax);
 }
 
 function reverseFirstOrder(profile: FirstOrder): FirstOrder {
