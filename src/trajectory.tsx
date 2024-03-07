@@ -385,11 +385,13 @@ function main(tp: Toolpath): TrajectoryPasses {
     let isNullMoveCommand = (ir: IR) => {
         return ir.op === "move" && (ir.args.x === null || ir.args.y === null);
     }
+    let limits = kinematicLimits(coords(300.0, 300.0), coords(50.0, 50.0), 1e-3, 1e-2); // can change later
+    let vMaxEitherAxis = Math.max(limits.vMax.x, limits.vMax.y);
     irs.forEach(function (ir: IR, index: number) {
         if (isNullMoveCommand(ir)) {
             return;
         }
-        let seg = segment(index, 1.0, 1.0, coords(ir.args.x!, ir.args.y!));
+        let seg = segment(index, vMaxEitherAxis, vMaxEitherAxis, coords(ir.args.x!, ir.args.y!));
         segments.push(seg);
     });
     let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2); // can change later
