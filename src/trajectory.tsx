@@ -476,7 +476,7 @@ function* forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimi
 function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
     let a = s.aMax;
     let p;
-    if (!reverse) {
+    if (reverse) {
         p = reverseFirstOrder(s.profile);
     } else {
         p = s.profile;
