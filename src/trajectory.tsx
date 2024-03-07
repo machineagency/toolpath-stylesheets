@@ -470,8 +470,6 @@ function* forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimi
 
         prev = seg;
     }
-
-    return res;
 }
 
 function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
