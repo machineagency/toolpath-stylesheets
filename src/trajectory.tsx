@@ -394,8 +394,7 @@ function main(tp: Toolpath): TrajectoryPasses {
         let seg = segment(index, vMaxEitherAxis, vMaxEitherAxis, coords(ir.args.x!, ir.args.y!));
         segments.push(seg);
     });
-    let limits = kinematicLimits(coords(1.0, 1.0), coords(1.0, 1.0), 1e-3, 1e-2); // can change later
-    let startLocation = segments[0].coords;
+    let startLocation = coords(0, 0);
     let plannerSegments: LineSegment[] = [];
 
     segments.forEach(function (s: Segment) {
