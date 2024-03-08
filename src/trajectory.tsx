@@ -48,7 +48,8 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
     wave: exampleToolpaths.gCodeWave,
     box: exampleToolpaths.ebbBox,
     signature: exampleToolpaths.ebbSignature,
-    gears: exampleToolpaths.gears
+    gears: exampleToolpaths.gears,
+    propellerTopScallop: exampleToolpaths.propellerTopScallop
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
@@ -104,20 +105,20 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
           grid: true,
           marks: [
             Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                x: (d: Coords) => {
+                x: (d: Vec3) => {
                     return d.x;
                 },
-                y: (d: Coords) => {
+                y: (d: Vec3) => {
                     return d.y;
                 },
                 r: 1
             }),
             Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
                 filter: (_, i) => i <= max * 2 && i >= min * 2,
-                x: (d: Coords) => {
+                x: (d: Vec3) => {
                     return d.x;
                 },
-                y: (d: Coords) => {
+                y: (d: Vec3) => {
                     return d.y;
                 },
                 stroke: "red"
@@ -199,33 +200,53 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
     return <div ref={containerRef}/>;
 }
 
-interface Coords {
+interface DepthHistogramProps {
+    toolpath: Toolpath | null;
+}
+
+function DepthHistogram({ toolpath }: DepthHistogramProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        if (toolpath === null) {
+            return;
+        }
+        const plot = Plot.plot({
+
+        });
+        if (containerRef.current) {
+            containerRef.current.append(plot);
+        }
+    }, [toolpath]);
+    return (
+        <div>The toolpath has some instructions.</div>
+    );
+}
+
+interface Vec3 {
     x: number,
-    y: number
+    y: number,
+    z: number
 }
 
 interface Segment {
     moveId: number,
     startVelocity: number,
     endVelocity: number,
-    coords: {
-        x: number,
-        y: number
-    }
+    coords: Vec3 
 }
 
 interface LineSegment {
     parent: number,
-    start: Coords,
-    end: Coords,
-    unit: Coords,
+    start: Vec3,
+    end: Vec3,
+    unit: Vec3,
     profile: FirstOrder,
     aMax: number
 }
 
 interface KinematicLimits {
-    vMax: Coords,
-    aMax: Coords,
+    vMax: Vec3,
+    aMax: Vec3,
     junctionSpeed: number,
     junctionDeviation: number
 }
@@ -245,14 +266,15 @@ interface TrajectoryPasses {
     fullyPlanned: LineSegment[]
 }
 
-function coords(x: number, y: number): Coords {
+function Vec3(x: number, y: number, z: number): Vec3 {
     return {
         x: x,
-        y: y
+        y: y,
+        z: z
     }
 }
 function segment(moveId: number, startVelocity: number, endVelocity: number, 
-        coords: Coords): Segment {
+        coords: Vec3): Segment {
     return {
         moveId: moveId,
         startVelocity: startVelocity,
@@ -261,7 +283,7 @@ function segment(moveId: number, startVelocity: number, endVelocity: number,
     }
 }
 
-function lineSegment(parent: number, start: Coords, end: Coords, unit: Coords, 
+function lineSegment(parent: number, start: Vec3, end: Vec3, unit: Vec3, 
                      profile: FirstOrder, amax: number): LineSegment {
     return {
         parent: parent,
@@ -273,7 +295,7 @@ function lineSegment(parent: number, start: Coords, end: Coords, unit: Coords,
     }
 }
 
-function kinematicLimits(maxVelocity: Coords, maxAcceleration: Coords,
+function kinematicLimits(maxVelocity: Vec3, maxAcceleration: Vec3,
          junctionSpeed: number, junctionDeviation: number): KinematicLimits {
     return {
         vMax: maxVelocity,
@@ -304,25 +326,28 @@ function planTriplets(locations: Segment[], prePlanned: LineSegment[],
     }
 }
 
-function fromGeo(parent: number, v0: number, v1: number, start: Coords, end: Coords,
+function fromGeo(parent: number, v0: number, v1: number, start: Vec3, end: Vec3,
     k1: KinematicLimits): LineSegment {
     let startVel = Math.abs(v0);
     let endVel = Math.abs(v1);
-    let delta = coords(end.x - start.x, end.y - start.y)
+    let delta = Vec3(end.x - start.x, end.y - start.y, end.z - start.z)
 
     let length = Math.sqrt((end.x - start.x)**2 + (end.y - start.y)**2);
     let profile = normalize(startVel, endVel, null, null, length) as FirstOrder;
-    let unit = coords(delta.x / length, delta.y / length);
+    let unit = Vec3(delta.x / length, delta.y / length, delta.z / length);
     return lineSegment(parent, start, end, unit, profile, limitVector(unit, k1.aMax));
 
 }
 
-function limitVector(v: Coords, l: Coords): number {
-    let absV = coords(Math.abs(v.x) / l.x, Math.abs(v.y) / l.y);
-    let max = Math.max(absV.x, absV.y);
+function limitVector(unitVec: Vec3, limits: Vec3): number {
+    let absUnitVec = Vec3(Math.abs(unitVec.x) / limits.x,
+                          Math.abs(unitVec.y) / limits.y,
+                          Math.abs(unitVec.z) / limits.z);
+    // TODO: determine if we need to treat Z differently, we don't want 2D moves
+    // to behave differently.
+    let max = Math.max(absUnitVec.x, absUnitVec.y, absUnitVec.z);
     return 1 / max;
 }
-
 
 function normalize(v0: number | null, v: number | null, a: number | null,
                     t: number | null, x: number | null): FirstOrder | null {
@@ -385,16 +410,18 @@ function main(tp: Toolpath): TrajectoryPasses {
     let isNullMoveCommand = (ir: IR) => {
         return ir.op === "move" && (ir.args.x === null || ir.args.y === null);
     }
-    let limits = kinematicLimits(coords(300.0, 300.0), coords(50.0, 50.0), 1e-3, 1e-2); // can change later
+    let limits = kinematicLimits(Vec3(300.0, 300.0, 150.0),
+                                 Vec3(50.0, 50.0, 25.0), 1e-3, 1e-2); // can change later
     let vMaxEitherAxis = Math.max(limits.vMax.x, limits.vMax.y);
     irs.forEach(function (ir: IR, index: number) {
         if (isNullMoveCommand(ir)) {
             return;
         }
-        let seg = segment(index, vMaxEitherAxis, vMaxEitherAxis, coords(ir.args.x!, ir.args.y!));
+        let seg = segment(index, vMaxEitherAxis, vMaxEitherAxis,
+                            Vec3(ir.args.x!, ir.args.y!, ir.args.z!));
         segments.push(seg);
     });
-    let startLocation = coords(0, 0);
+    let startLocation = { x: 0, y: 0, z: 0};
     let plannerSegments: LineSegment[] = [];
 
     segments.forEach(function (s: Segment) {
@@ -509,7 +536,9 @@ function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
         secondProfile = reverseFirstOrder(firstProfileOg);
     }
 
-    let crossing = coords(s.start.x + s.unit.x * firstProfile.x, s.start.y + s.unit.y * firstProfile.x);
+    let crossing = Vec3(s.start.x + s.unit.x * firstProfile.x,
+                          s.start.y + s.unit.y * firstProfile.x,
+                          s.start.z + s.unit.z * firstProfile.x);
 
     yield lineSegment(s.parent, s.start, crossing, s.unit, firstProfile, s.aMax);
     yield lineSegment(s.parent, crossing, s.end, s.unit, secondProfile, s.aMax);
@@ -527,9 +556,12 @@ function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: Kinemat
     } else if (junctionCos < -0.9999) {
         return null;
     } else {
-        let junctionVect = coords(s.unit.x - p.unit.x, s.unit.y - p.unit.y);
-        junctionVect.x /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
-        junctionVect.y /= Math.sqrt(dot([junctionVect.x, junctionVect.y], [junctionVect.x, junctionVect.y]));
+        let junctionVect = Vec3(s.unit.x - p.unit.x, s.unit.y - p.unit.y, s.unit.z - p.unit.z);
+        let vectDotSelf = dot([junctionVect.x, junctionVect.y, junctionVect.z],
+                              [junctionVect.x, junctionVect.y, junctionVect.z]);
+        junctionVect.x /= Math.sqrt(vectDotSelf);
+        junctionVect.y /= Math.sqrt(vectDotSelf);
+        junctionVect.z /= Math.sqrt(vectDotSelf);
 
         let junctionAcceleration = limitValueByAxis(limits.aMax, junctionVect);
         let sinThetaD2 = Math.sqrt(0.5 * (1 - junctionCos));
@@ -538,18 +570,17 @@ function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: Kinemat
     }
 }
 
-function limitValueByAxis(limits: Coords, vector: Coords): number {
+function limitValueByAxis(limits: Vec3, vector: Vec3): number {
     let limitValue = 1e19;
-    // handle x coord
     if (vector.x != 0) {
         limitValue = Math.min(limitValue, Math.abs(limits.x / vector.x));
     }
-
-    // handle y coord
     if (vector.y != 0) {
         limitValue = Math.min(limitValue, Math.abs(limits.y / vector.y));
     }
-
+    if (vector.z != 0) {
+        limitValue = Math.min(limitValue, Math.abs(limits.z / vector.z));
+    }
     return limitValue;
 }
 
@@ -647,6 +678,7 @@ function App() {
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
             <RangeSlider max={max} onChange={handleRangeChange}></RangeSlider>
+            <DepthHistogram toolpath={currentToolpath}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               onMaxChange={handleMaxChange}
