@@ -17,9 +17,9 @@ const DEBUG: boolean = false;
 
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
+    lineSegments: LineSegment[];
     min: number;
     max: number;
-    onMaxChange: (max: number) => void;
 }
 
 interface DashboardSettingsProps {
@@ -27,7 +27,7 @@ interface DashboardSettingsProps {
 }
 
 interface RangeSliderProps {
-    max: number;
+    absoluteMax: number;
     onChange: (newRange: number[] | number) => void;
 }
 
@@ -65,8 +65,8 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     );
 }
 
-function RangeSlider({ max, onChange }: RangeSliderProps) {
-    const [range, setRange] = useState<number[]>([0, max]);
+function RangeSlider({ absoluteMax, onChange }: RangeSliderProps) {
+    const [range, setRange] = useState<number[]>([0, absoluteMax]);
 
     const handleRangeChange = (newRange: number | number[]) => {
         setRange(newRange as number[]);
@@ -74,17 +74,15 @@ function RangeSlider({ max, onChange }: RangeSliderProps) {
     };
 
     useEffect(() => {
-        if (max) {
-            setRange([0, max]);
-        }
-    }, [max]);
+        setRange([0, absoluteMax]);
+    }, [absoluteMax]);
 
     return (
         <div className="range-slider">
             <Slider
               range
               min={0}
-              max={max}
+              max={absoluteMax}
               value={range}
               onChange={handleRangeChange}
             />
@@ -157,7 +155,7 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
             xyPlot.remove();
             zPlot.remove();
         };
-      }, [lineSegments]);
+      }, [lineSegments, min, max]);
 
     return <div className="flex" ref={containerRef}/>;
 }
@@ -223,7 +221,7 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
             containerRef.current.append(plot);
         }
         return () => plot.remove();
-      }, [lineSegments]);
+      }, [lineSegments, min, max]);
 
     return <div ref={containerRef}/>;
 }
@@ -424,7 +422,7 @@ function normalize(v0: number | null, v: number | null, a: number | null,
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
-function main(tp: Toolpath): TrajectoryPasses {
+function computeLineSegments(tp: Toolpath): TrajectoryPasses {
     let irs;
     // handles lowering
     if (tp.isa == "ebb") {
@@ -624,7 +622,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, min, max, onMaxChange }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, min, max, lineSegments }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -648,53 +646,45 @@ function TrajectoryWindow({ toolpath, min, max, onMaxChange }: TrajectoryWindowP
         );
     }
 
-    let { prePlanned, halfPlanned, fullyPlanned } = main(toolpath);
-
-    // last toolpath needs both 
-    const len = fullyPlanned.length;
-    useEffect(() => {
-        onMaxChange(len);
-    }, [len, onMaxChange]);
-
     return (<div>
         <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot lineSegments={fullyPlanned} min={min} max={max}></SegmentPlot>
+        <SegmentPlot lineSegments={lineSegments} min={min} max={max}></SegmentPlot>
 
-        {DEBUG && (
+        {/* {DEBUG && (
             <React.Fragment>
             <div className="plot-title">Pre-planned Segments</div>
             <ProfilePlot lineSegments={prePlanned} min={min} max={max}></ProfilePlot>
             <div className="plot-title">Half-planned Segments</div>
             <ProfilePlot lineSegments={halfPlanned} min={min} max={max}></ProfilePlot>
             </React.Fragment>
-        )}
+        )} */}
         <div className="plot-title">Fully-planned Segments</div>
-        <ProfilePlot lineSegments={fullyPlanned} min={min} max={max}></ProfilePlot>
+        <ProfilePlot lineSegments={lineSegments} min={min} max={max}></ProfilePlot>
     </div>)
 };
 
 function App() {
     const defaultToolpath = TOOLPATH_TABLE["testToolpath"];
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
+    const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
         setCurrentToolpath(toolpath);
     };
 
-    // max length of the LineSegment[]
-    const [max, setMax] = useState<number>(0);
+    useEffect(() => {
+        if (currentToolpath !== null) {
+            let { fullyPlanned } = computeLineSegments(currentToolpath);
+            setLineSegments(fullyPlanned);
+            setMinValue(0);
+            setMaxValue(fullyPlanned.length);
+        }
+    }, [currentToolpath]);
+
     // slider min and max values
     const [minValue, setMinValue] = useState<number>(0);
-    const [maxValue, setMaxValue] = useState<number>(0);
-
-    useEffect(() => {
-        setMaxValue(max);
-    }, [max]);
-
-    const handleMaxChange = (newMax: number) => {
-        setMax(newMax)
-    };
+    const [maxValue, setMaxValue] = useState<number>(lineSegments.length);
 
     const handleRangeChange = (newRange: number[] | number) => {
         let range = newRange as number[];
@@ -705,11 +695,11 @@ function App() {
     return (
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
-            <RangeSlider max={max} onChange={handleRangeChange}></RangeSlider>
+            <RangeSlider absoluteMax={lineSegments.length} onChange={handleRangeChange}></RangeSlider>
             <DepthHistogram toolpath={currentToolpath}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
-              onMaxChange={handleMaxChange}
+              lineSegments={lineSegments}
               min={minValue}
               max={maxValue}/>
         </div>
