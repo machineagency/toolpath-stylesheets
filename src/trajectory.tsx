@@ -240,24 +240,32 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
 }
 
 interface DepthHistogramProps {
-    toolpath: Toolpath | null;
+    lineSegments: LineSegment[];
 }
 
-function DepthHistogram({ toolpath }: DepthHistogramProps) {
+function DepthHistogram({ lineSegments }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
-        if (toolpath === null) {
-            return;
-        }
+        // TODO: only considering the start point of segments for now
         const plot = Plot.plot({
-
-        });
+            y: {grid: true},
+            marks: [
+              Plot.rectY(lineSegments, Plot.binX({y: "count"}, {x: (ls: LineSegment) => {
+                return ls.start.z;
+              }})),
+              Plot.ruleY([0])
+            ]
+          })
         if (containerRef.current) {
             containerRef.current.append(plot);
         }
-    }, [toolpath]);
+        return () => plot.remove();
+    }, [lineSegments]);
     return (
-        <div>The toolpath has some instructions.</div>
+        <div className="depth-histogram-container">
+            <div className="plot-title">Depth Histogram</div>
+            <div className="depth-histogram" ref={containerRef}></div>
+        </div>
     );
 }
 
@@ -709,7 +717,7 @@ function App() {
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
             <RangeSlider absoluteMax={lineSegments.length} onChange={handleRangeChange}></RangeSlider>
-            <DepthHistogram toolpath={currentToolpath}/>
+            <DepthHistogram lineSegments={lineSegments}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
