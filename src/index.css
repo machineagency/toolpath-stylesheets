@@ -31,6 +31,10 @@ body {
   min-height: 100vh;
 }
 
+.flex {
+  display: flex;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

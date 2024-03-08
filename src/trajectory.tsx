@@ -101,7 +101,7 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
 
     useEffect(() => {
         if (lineSegments === undefined) return;
-        const plot = Plot.plot({
+        const xyPlot = Plot.plot({
           grid: true,
           marks: [
             Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
@@ -125,13 +125,41 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
             })
           ]
         });
+        const zPlot = Plot.plot({
+            grid: true,
+            marks: [
+              Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+                  x: (_, index: number) => {
+                      return index;
+                  },
+                  y: (d: Vec3) => {
+                      return d.z;
+                  },
+                  r: 1
+              }),
+              Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+                  filter: (_, i) => i <= max * 2 && i >= min * 2,
+                  x: (_, index: number) => {
+                      return index;
+                  },
+                  y: (d: Vec3) => {
+                      return d.z;
+                  },
+                  stroke: "red"
+              })
+            ]
+          });
         if (containerRef.current) {
-            containerRef.current.append(plot);
+            containerRef.current.append(xyPlot);
+            containerRef.current.append(zPlot);
         }
-        return () => plot.remove();
+        return () => {
+            xyPlot.remove();
+            zPlot.remove();
+        };
       }, [lineSegments]);
 
-    return <div ref={containerRef}/>;
+    return <div className="flex" ref={containerRef}/>;
 }
 
 function ProfilePlot({ lineSegments, min, max }: PlotProps) {
