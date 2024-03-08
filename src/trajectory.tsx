@@ -15,9 +15,12 @@ import './trajectory.css'
 
 const DEBUG: boolean = false;
 
+type AllSegments = "all_segments";
+
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     lineSegments: LineSegment[];
+    filterSegmentIds: Set<number> | AllSegments;
     min: number;
     max: number;
 }
@@ -34,6 +37,7 @@ interface RangeSliderProps {
 
 interface PlotProps {
     lineSegments: LineSegment[];
+    filterSegmentIds: Set<number> | AllSegments;
     min: number;
     max: number;
 }
@@ -94,7 +98,14 @@ function RangeSlider({ absoluteMax, onChange }: RangeSliderProps) {
     )
 }
 
-function SegmentPlot({ lineSegments, min, max }: PlotProps) {
+interface Vec3WithId {
+    x: number;
+    y: number;
+    z: number;
+    id: number;
+}
+
+function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const findXYExtrema = (lineSegments: LineSegment[]): [number, number] => {
@@ -115,49 +126,80 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
             domain: extrema
           },
           marks: [
-            Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                x: (d: Vec3) => {
+            Plot.line(lineSegments.flatMap((segment) => {
+                let startPlusId = {...segment.start, id: segment.parent};
+                let endPlusId = {...segment.end, id: segment.parent};
+                return [startPlusId, endPlusId, null]
+            }), {
+                filter: (point: Vec3WithId | null) => {
+                    if (point === null || filterSegmentIds === 'all_segments') {
+                        return true;
+                    } else {
+                        return filterSegmentIds.has(point.id);
+                    }
+                },
+                x: (d: Vec3 | null) => {
+                    if (d === null) {
+                        return null;
+                    }
                     return d.x;
                 },
-                y: (d: Vec3) => {
+                y: (d: Vec3 | null) => {
+                    if (d === null) {
+                        return null;
+                    }
                     return d.y;
                 },
                 r: 1
             }),
-            Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                filter: (_, i) => i <= max * 2 && i >= min * 2,
-                x: (d: Vec3) => {
-                    return d.x;
-                },
-                y: (d: Vec3) => {
-                    return d.y;
-                },
-                stroke: "red"
-            })
+            // Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+            //     filter: (_, i) => i <= max * 2 && i >= min * 2,
+            //     x: (d: Vec3) => {
+            //         return d.x;
+            //     },
+            //     y: (d: Vec3) => {
+            //         return d.y;
+            //     },
+            //     stroke: "red"
+            // })
           ]
         });
         const zPlot = Plot.plot({
             grid: true,
             marks: [
-              Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                  x: (_, index: number) => {
-                      return index;
+              Plot.line(lineSegments.flatMap((segment) => {
+                  let startPlusId = {...segment.start, id: segment.parent};
+                  let endPlusId = {...segment.end, id: segment.parent};
+                  return [startPlusId, endPlusId, null]
+              }), {
+                  filter: (point: Vec3WithId | null) => {
+                      if (point === null || filterSegmentIds === 'all_segments') {
+                          return true;
+                      } else {
+                          return filterSegmentIds.has(point.id);
+                      }
                   },
-                  y: (d: Vec3) => {
+                  x: (_, index: number) => {
+                      return index / 3;
+                  },
+                  y: (d: Vec3 | null) => {
+                      if (d === null) {
+                        return null;
+                      }
                       return d.z;
                   },
                   r: 1
               }),
-              Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-                  filter: (_, i) => i <= max * 2 && i >= min * 2,
-                  x: (_, index: number) => {
-                      return index;
-                  },
-                  y: (d: Vec3) => {
-                      return d.z;
-                  },
-                  stroke: "red"
-              })
+            //   Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
+            //       filter: (_, i) => i <= max * 2 && i >= min * 2,
+            //       x: (_, index: number) => {
+            //           return index;
+            //       },
+            //       y: (d: Vec3) => {
+            //           return d.z;
+            //       },
+            //       stroke: "red"
+            //   })
             ]
           });
         if (containerRef.current) {
@@ -168,12 +210,13 @@ function SegmentPlot({ lineSegments, min, max }: PlotProps) {
             xyPlot.remove();
             zPlot.remove();
         };
-      }, [lineSegments, min, max]);
+      }, [lineSegments, filterSegmentIds, min, max]);
 
     return <div className="flex" ref={containerRef}/>;
 }
 
-function ProfilePlot({ lineSegments, min, max }: PlotProps) {
+type MeasureIdPair = [number, number];
+function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -189,10 +232,15 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
         });
 
         cumulativeTimes = cumulativeTimes.slice(min * 3, max * 3);
-        const vPairs = lineSegments.map((ls: LineSegment) => [ls.profile.v0, ls.profile.v, null])
-            .flat().slice(min * 3, max * 3);
-        const aPairs = lineSegments.map((ls: LineSegment) => [ls.profile.a, ls.profile.a, null])
-            .flat().slice(min * 3, max * 3);
+        const vPairs = lineSegments.flatMap((ls: LineSegment) => {
+            let v0Pair = [ls.profile.v0, ls.parent];
+            let vPair = [ls.profile.v, ls.parent];
+            return [v0Pair, vPair, null];
+        })
+        const aPairs = lineSegments.flatMap((ls: LineSegment) => {
+            let aPair = [ls.profile.a, ls.parent];
+            return [aPair, aPair, null];
+        })
 
         const plot = Plot.plot({
             x: {
@@ -205,8 +253,14 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
             },
             marks: [
               Plot.line(cumulativeTimes, {
+                filter: (_, i: number) => {
+                    if (filterSegmentIds === 'all_segments' || vPairs[i] === null) {
+                        return true;
+                    }
+                    return filterSegmentIds.has(vPairs[i][1]);
+                },
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (_, i: number) => vPairs[i],
+                y: (_, i: number) => vPairs[i]?.[0],
                 stroke: "#4e79a7"
               }),
               Plot.text(cumulativeTimes, Plot.selectLast({
@@ -217,8 +271,14 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
                 dy: -5
               })),
               Plot.line(cumulativeTimes, {
+                filter: (_, i: number) => {
+                    if (filterSegmentIds === 'all_segments' || aPairs[i] === null) {
+                        return true;
+                    }
+                    return filterSegmentIds.has(aPairs[i][1]);
+                },
                 x: (_, i: number) => cumulativeTimes[i],
-                y: (_, i: number) => aPairs[i],
+                y: (_, i: number) => aPairs[i]?.[0],
                 stroke: "#e15759"
               }),
               Plot.text(cumulativeTimes, Plot.selectLast({
@@ -234,16 +294,17 @@ function ProfilePlot({ lineSegments, min, max }: PlotProps) {
             containerRef.current.append(plot);
         }
         return () => plot.remove();
-      }, [lineSegments, min, max]);
+      }, [lineSegments, filterSegmentIds, min, max]);
 
     return <div ref={containerRef}/>;
 }
 
 interface DepthHistogramProps {
     lineSegments: LineSegment[];
+    onBinSelect: (setIds: Set<number> | AllSegments) => void;
 }
 
-function DepthHistogram({ lineSegments }: DepthHistogramProps) {
+function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         // TODO: only considering the start point of segments for now
@@ -261,7 +322,17 @@ function DepthHistogram({ lineSegments }: DepthHistogramProps) {
                 Plot.rectY(lineSegments, fakeBrush),
                 Plot.ruleY([0])
             ]
-          })
+          });
+          plot.addEventListener("input", (_) => {
+            if (plot.value === null) {
+                onBinSelect('all_segments');
+                return;
+            }
+            let selectedSegments = plot.value as LineSegment[];
+            let segIds = selectedSegments.map(ls => ls.parent);
+            let idSet = new Set(segIds);
+            onBinSelect(idSet);
+          });
         if (containerRef.current) {
             containerRef.current.append(plot);
         }
@@ -649,7 +720,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, min, max, lineSegments }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -675,7 +746,8 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments }: TrajectoryWindow
 
     return (<div>
         <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot lineSegments={lineSegments} min={min} max={max}></SegmentPlot>
+        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
+                     min={min} max={max}></SegmentPlot>
 
         {/* {DEBUG && (
             <React.Fragment>
@@ -686,14 +758,16 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments }: TrajectoryWindow
             </React.Fragment>
         )} */}
         <div className="plot-title">Fully-planned Segments</div>
-        <ProfilePlot lineSegments={lineSegments} min={min} max={max}></ProfilePlot>
+        <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
+                    min={min} max={max}></ProfilePlot>
     </div>)
 };
 
 function App() {
-    const defaultToolpath = TOOLPATH_TABLE["testToolpath"];
+    const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
+    const [filterSegmentIds, setFilterSegmentIds] = useState<Set<number> | AllSegments>("all_segments");
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
@@ -719,14 +793,24 @@ function App() {
         setMaxValue(range[1]);
     }
 
+    const handleBinSelect = (selectIds: Set<number> | AllSegments) => {
+        if (selectIds === null) {
+            setFilterSegmentIds('all_segments');
+        }
+        else {
+            setFilterSegmentIds(selectIds);
+        }
+    }
+
     return (
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
             <RangeSlider absoluteMax={lineSegments.length} onChange={handleRangeChange}></RangeSlider>
-            <DepthHistogram lineSegments={lineSegments}/>
+            <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
+              filterSegmentIds={filterSegmentIds}
               min={minValue}
               max={maxValue}/>
         </div>
