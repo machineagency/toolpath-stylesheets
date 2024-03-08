@@ -97,10 +97,23 @@ function RangeSlider({ absoluteMax, onChange }: RangeSliderProps) {
 function SegmentPlot({ lineSegments, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
+    const findXYExtrema = (lineSegments: LineSegment[]): [number, number] => {
+        let points = lineSegments.flatMap(ls => [ls.start, ls.end]);
+        let components = points.flatMap(pt => [pt.x, pt.y]);
+        return [Math.min(...components), Math.max(...components)];
+    }
+
     useEffect(() => {
         if (lineSegments === undefined) return;
+        let extrema = findXYExtrema(lineSegments);
         const xyPlot = Plot.plot({
           grid: true,
+          x: {
+            domain: extrema
+          },
+          y: {
+            domain: extrema
+          },
           marks: [
             Plot.dot(lineSegments.flatMap(segment => [segment.start, segment.end]), {
                 x: (d: Vec3) => {
