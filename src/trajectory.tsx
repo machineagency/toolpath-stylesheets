@@ -247,13 +247,19 @@ function DepthHistogram({ lineSegments }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         // TODO: only considering the start point of segments for now
+        const fakeBrush = Plot.pointerX(Plot.binX({ y: 'count' }, {
+            x: (ls: LineSegment) => ls.start.z
+        }));
         const plot = Plot.plot({
             y: {grid: true},
             marks: [
-              Plot.rectY(lineSegments, Plot.binX({y: "count"}, {x: (ls: LineSegment) => {
-                return ls.start.z;
-              }})),
-              Plot.ruleY([0])
+                Plot.rectY(lineSegments, Plot.binX({ y: 'count' }, {
+                    x: (ls: LineSegment) => ls.start.z,
+                    // @ts-ignore
+                    fillOpacity: 0.5
+                })),
+                Plot.rectY(lineSegments, fakeBrush),
+                Plot.ruleY([0])
             ]
           })
         if (containerRef.current) {
