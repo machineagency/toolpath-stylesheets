@@ -149,7 +149,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                         return null;
                     }
                     return d.y;
-                },
+                }
             })
           ]
         });
@@ -260,71 +260,56 @@ interface DepthHistogramProps {
     onBinSelect: (setIds: Set<number> | AllSegments) => void;
 }
 
+interface LineSegmentWithId extends LineSegment {
+    id: number;
+}
+
 function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
-        // TODO: only considering the start point of segments for now
-        const histogramBrush = Plot.brushX(Plot.binX({ y: 'count' }, {
-            x: (ls: LineSegment) => ls.start.z
-        }));
-        const plot = Plot.plot({
-            y: {grid: true},
-            marks: [
-                Plot.rectY(lineSegments, Plot.binX({ y: 'count' }, {
-                    x: (ls: LineSegment) => ls.start.z,
-                    // @ts-ignore
-                    fillOpacity: 0.5
-                })),
-                Plot.rectY(lineSegments, histogramBrush),
-                Plot.ruleY([0])
-            ]
-          });
-          const zPlot = Plot.plot({
-            grid: true,
-            marks: [
-              Plot.dot(lineSegments.flatMap((segment) => {
-                  let startPlusId = {...segment.start, id: segment.parent};
-                  let endPlusId = {...segment.end, id: segment.parent};
-                  return [startPlusId, endPlusId, null]
-              }), Plot.brushX({
-                  x: (_, index: number) => {
-                      return index / 3;
-                  },
-                  y: (d: Vec3 | null) => {
-                      if (d === null) {
-                        return null;
-                      }
-                      return d.z;
-                  },
-                  r: 0.5
-              }))
-            ]
-          });
-          zPlot.addEventListener("input", (_) => {
-            // console.log(zPlot.value.flat());
-            if (zPlot.value === null) {
-                onBinSelect('all_segments');
-                return;
-            }
-            let selectedSegments = zPlot.value.flat() as (LineSegment | null)[];
-            let segIds = selectedSegments
-                .filter(maybeSeg => maybeSeg !== null)
-                .map(ls => {
-                    if (ls === null) {
-                        return null
-                    } else {
-                        return ls.id;
+        const zPlot = Plot.plot({
+          grid: true,
+          marks: [
+            Plot.dot(lineSegments.flatMap((segment) => {
+                let startPlusId = {...segment.start, id: segment.parent};
+                let endPlusId = {...segment.end, id: segment.parent};
+                return [startPlusId, endPlusId, null]
+            }), Plot.brushX({
+                x: (_, index: number) => {
+                    return index / 3;
+                },
+                y: (d: Vec3 | null) => {
+                    if (d === null) {
+                      return null;
                     }
-                }) as number[];
-            let idSet = new Set(segIds);
-            onBinSelect(idSet);
-          });
+                    return d.z;
+                },
+                r: 0.5
+            }))
+          ]
+        });
+        zPlot.addEventListener("input", (_) => {
+          if (zPlot.value === null) {
+              onBinSelect('all_segments');
+              return;
+          }
+          let selectedSegments = zPlot.value.flat() as (LineSegmentWithId | null)[];
+          let segIds = selectedSegments
+              .filter(maybeSeg => maybeSeg !== null)
+              .map(ls => {
+                  if (ls === null) {
+                      return null
+                  } else {
+                      return ls.id;
+                  }
+              }) as number[];
+          let idSet = new Set(segIds);
+          onBinSelect(idSet);
+        });
         if (containerRef.current) {
-            //containerRef.current.append(plot);
             containerRef.current.append(zPlot);
         }
         return () => {
-            //plot.remove();
             zPlot.remove();
         };
     }, [lineSegments]);
