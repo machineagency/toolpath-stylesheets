@@ -171,24 +171,32 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
         if (lineSegments === undefined) return;
         let cumulativeTimes: (number | null)[] = [];
         let soFar = 0;
-        lineSegments.forEach((ls: LineSegment) => {
-            let newTime = soFar + ls.profile.t;
-            cumulativeTimes.push(soFar);
-            cumulativeTimes.push(newTime);
-            cumulativeTimes.push(null);
-            soFar = newTime;
-        });
+        lineSegments
+            .filter((ls: LineSegment) => {
+                return filterSegmentIds === 'all_segments' || filterSegmentIds.has(ls.parent)
+            })
+            .forEach((ls: LineSegment) => {
+                let newTime = soFar + ls.profile.t;
+                cumulativeTimes.push(soFar);
+                cumulativeTimes.push(newTime);
+                cumulativeTimes.push(null);
+                soFar = newTime;
+            });
 
         cumulativeTimes = cumulativeTimes.slice(min * 3, max * 3);
         const vPairs = lineSegments.flatMap((ls: LineSegment) => {
-            let v0Pair = [ls.profile.v0, ls.parent];
-            let vPair = [ls.profile.v, ls.parent];
-            return [v0Pair, vPair, null];
-        });
+            if (filterSegmentIds !== 'all_segments' && filterSegmentIds.has(ls.parent)) {
+                let v0Pair = [ls.profile.v0, ls.parent];
+                let vPair = [ls.profile.v, ls.parent];
+                return [v0Pair, vPair, null];
+            }
+        }).filter(el => el !== undefined);
         const aPairs = lineSegments.flatMap((ls: LineSegment) => {
-            let aPair = [ls.profile.a, ls.parent];
-            return [aPair, aPair, null];
-        });
+            if (filterSegmentIds !== 'all_segments' && filterSegmentIds.has(ls.parent)) {
+                let aPair = [ls.profile.a, ls.parent];
+                return [aPair, aPair, null];
+            }
+        }).filter(el => el !== undefined);
 
         const plot = Plot.plot({
             x: {
@@ -201,12 +209,12 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
             },
             marks: [
               Plot.line(cumulativeTimes, {
-                filter: (_, i: number) => {
-                    if (filterSegmentIds === 'all_segments' || vPairs[i] === null) {
-                        return true;
-                    }
-                    return filterSegmentIds.has(vPairs[i]![1]);
-                },
+                // filter: (_, i: number) => {
+                //     if (filterSegmentIds === 'all_segments' || vPairs[i] === null) {
+                //         return true;
+                //     }
+                //     return filterSegmentIds.has(vPairs[i]![1]);
+                // },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => vPairs[i]?.[0],
                 stroke: "#4e79a7"
@@ -219,12 +227,12 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                 dy: -5
               })),
               Plot.line(cumulativeTimes, {
-                filter: (_, i: number) => {
-                    if (filterSegmentIds === 'all_segments' || aPairs[i] === null) {
-                        return true;
-                    }
-                    return filterSegmentIds.has(aPairs[i]![1]);
-                },
+                // filter: (_, i: number) => {
+                //     if (filterSegmentIds === 'all_segments' || aPairs[i] === null) {
+                //         return true;
+                //     }
+                //     return filterSegmentIds.has(aPairs[i]![1]);
+                // },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => aPairs[i]?.[0],
                 stroke: "#e15759"
@@ -278,7 +286,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
                   let startPlusId = {...segment.start, id: segment.parent};
                   let endPlusId = {...segment.end, id: segment.parent};
                   return [startPlusId, endPlusId, null]
-              }), Plot.brush({
+              }), Plot.brushX({
                   x: (_, index: number) => {
                       return index / 3;
                   },
@@ -312,11 +320,11 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
             onBinSelect(idSet);
           });
         if (containerRef.current) {
-            containerRef.current.append(plot);
+            //containerRef.current.append(plot);
             containerRef.current.append(zPlot);
         }
         return () => {
-            plot.remove();
+            //plot.remove();
             zPlot.remove();
         };
     }, [lineSegments]);
