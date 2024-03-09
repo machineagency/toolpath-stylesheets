@@ -153,40 +153,11 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
             })
           ]
         });
-        const zPlot = Plot.plot({
-            grid: true,
-            marks: [
-              Plot.line(lineSegments.flatMap((segment) => {
-                  let startPlusId = {...segment.start, id: segment.parent};
-                  let endPlusId = {...segment.end, id: segment.parent};
-                  return [startPlusId, endPlusId, null]
-              }), {
-                  filter: (point: Vec3WithId | null) => {
-                      if (point === null || filterSegmentIds === 'all_segments') {
-                          return true;
-                      } else {
-                          return filterSegmentIds.has(point.id);
-                      }
-                  },
-                  x: (_, index: number) => {
-                      return index / 3;
-                  },
-                  y: (d: Vec3 | null) => {
-                      if (d === null) {
-                        return null;
-                      }
-                      return d.z;
-                  }
-              })
-            ]
-          });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
-            containerRef.current.append(zPlot);
         }
         return () => {
             xyPlot.remove();
-            zPlot.remove();
         };
       }, [lineSegments, filterSegmentIds, min, max]);
 
@@ -285,7 +256,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         // TODO: only considering the start point of segments for now
-        const fakeBrush = Plot.brushX(Plot.binX({ y: 'count' }, {
+        const histogramBrush = Plot.brushX(Plot.binX({ y: 'count' }, {
             x: (ls: LineSegment) => ls.start.z
         }));
         const plot = Plot.plot({
@@ -296,24 +267,58 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
                     // @ts-ignore
                     fillOpacity: 0.5
                 })),
-                Plot.rectY(lineSegments, fakeBrush),
+                Plot.rectY(lineSegments, histogramBrush),
                 Plot.ruleY([0])
             ]
           });
-          plot.addEventListener("input", (_) => {
-            if (plot.value === null) {
+          const zPlot = Plot.plot({
+            grid: true,
+            marks: [
+              Plot.dot(lineSegments.flatMap((segment) => {
+                  let startPlusId = {...segment.start, id: segment.parent};
+                  let endPlusId = {...segment.end, id: segment.parent};
+                  return [startPlusId, endPlusId, null]
+              }), Plot.brush({
+                  x: (_, index: number) => {
+                      return index / 3;
+                  },
+                  y: (d: Vec3 | null) => {
+                      if (d === null) {
+                        return null;
+                      }
+                      return d.z;
+                  },
+                  r: 0.5
+              }))
+            ]
+          });
+          zPlot.addEventListener("input", (_) => {
+            // console.log(zPlot.value.flat());
+            if (zPlot.value === null) {
                 onBinSelect('all_segments');
                 return;
             }
-            let selectedSegments = plot.value.flat() as LineSegment[];
-            let segIds = selectedSegments.map(ls => ls.parent);
+            let selectedSegments = zPlot.value.flat() as (LineSegment | null)[];
+            let segIds = selectedSegments
+                .filter(maybeSeg => maybeSeg !== null)
+                .map(ls => {
+                    if (ls === null) {
+                        return null
+                    } else {
+                        return ls.id;
+                    }
+                }) as number[];
             let idSet = new Set(segIds);
             onBinSelect(idSet);
           });
         if (containerRef.current) {
             containerRef.current.append(plot);
+            containerRef.current.append(zPlot);
         }
-        return () => plot.remove();
+        return () => {
+            plot.remove();
+            zPlot.remove();
+        };
     }, [lineSegments]);
     return (
         <div className="depth-histogram-container">
