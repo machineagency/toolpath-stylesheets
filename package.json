@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@observablehq/plot": "^0.6.13",
+    "@observablehq/plot": "github:observablehq/plot#fil/brush",
     "@vitejs/plugin-react": "^4.2.1",
     "d3": "^7.8.5",
     "lit": "^2.7.4",
