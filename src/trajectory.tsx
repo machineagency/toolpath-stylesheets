@@ -150,18 +150,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                     }
                     return d.y;
                 },
-                r: 1
-            }),
-            // Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-            //     filter: (_, i) => i <= max * 2 && i >= min * 2,
-            //     x: (d: Vec3) => {
-            //         return d.x;
-            //     },
-            //     y: (d: Vec3) => {
-            //         return d.y;
-            //     },
-            //     stroke: "red"
-            // })
+            })
           ]
         });
         const zPlot = Plot.plot({
@@ -187,19 +176,8 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                         return null;
                       }
                       return d.z;
-                  },
-                  r: 1
-              }),
-            //   Plot.line(lineSegments.flatMap(segment => [segment.start, segment.end]), {
-            //       filter: (_, i) => i <= max * 2 && i >= min * 2,
-            //       x: (_, index: number) => {
-            //           return index;
-            //       },
-            //       y: (d: Vec3) => {
-            //           return d.z;
-            //       },
-            //       stroke: "red"
-            //   })
+                  }
+              })
             ]
           });
         if (containerRef.current) {
@@ -215,7 +193,6 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     return <div className="flex" ref={containerRef}/>;
 }
 
-type MeasureIdPair = [number, number];
 function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -236,11 +213,11 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
             let v0Pair = [ls.profile.v0, ls.parent];
             let vPair = [ls.profile.v, ls.parent];
             return [v0Pair, vPair, null];
-        })
+        });
         const aPairs = lineSegments.flatMap((ls: LineSegment) => {
             let aPair = [ls.profile.a, ls.parent];
             return [aPair, aPair, null];
-        })
+        });
 
         const plot = Plot.plot({
             x: {
@@ -257,7 +234,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                     if (filterSegmentIds === 'all_segments' || vPairs[i] === null) {
                         return true;
                     }
-                    return filterSegmentIds.has(vPairs[i][1]);
+                    return filterSegmentIds.has(vPairs[i]![1]);
                 },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => vPairs[i]?.[0],
@@ -275,7 +252,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                     if (filterSegmentIds === 'all_segments' || aPairs[i] === null) {
                         return true;
                     }
-                    return filterSegmentIds.has(aPairs[i][1]);
+                    return filterSegmentIds.has(aPairs[i]![1]);
                 },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => aPairs[i]?.[0],
@@ -308,7 +285,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         // TODO: only considering the start point of segments for now
-        const fakeBrush = Plot.pointerX(Plot.binX({ y: 'count' }, {
+        const fakeBrush = Plot.brushX(Plot.binX({ y: 'count' }, {
             x: (ls: LineSegment) => ls.start.z
         }));
         const plot = Plot.plot({
@@ -328,7 +305,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
                 onBinSelect('all_segments');
                 return;
             }
-            let selectedSegments = plot.value as LineSegment[];
+            let selectedSegments = plot.value.flat() as LineSegment[];
             let segIds = selectedSegments.map(ls => ls.parent);
             let idSet = new Set(segIds);
             onBinSelect(idSet);
