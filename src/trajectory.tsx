@@ -53,7 +53,8 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
     box: exampleToolpaths.ebbBox,
     signature: exampleToolpaths.ebbSignature,
     gears: exampleToolpaths.gears,
-    propellerTopScallop: exampleToolpaths.propellerTopScallop
+    propellerTopScallop: exampleToolpaths.propellerTopScallop,
+    propellerTopPocket: exampleToolpaths.propellerTopPocket
 };
 
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
