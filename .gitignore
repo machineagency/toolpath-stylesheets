@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+# Include custom types for FFT.js
+!node_modules/@types/fft-js
 dist
 dist-ssr
 *.local
