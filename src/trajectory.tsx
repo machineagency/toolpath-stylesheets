@@ -173,7 +173,7 @@ function filterLineSegments(lineSegments: LineSegment[],
     if (filterIds === 'all_segments') {
         return lineSegments;
     }
-    return lineSegments.filter(ls => filterIds.has(ls.parent));
+    return lineSegments.filter(ls => ls === null || filterIds.has(ls.parent));
 }
 
 function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
@@ -193,19 +193,17 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
             });
 
         cumulativeTimes = cumulativeTimes.slice(min * 3, max * 3);
-        const vPairs = lineSegments.flatMap((ls: LineSegment) => {
-            if (filterSegmentIds !== 'all_segments' && filterSegmentIds.has(ls.parent)) {
+        const vPairs = filterLineSegments(lineSegments, filterSegmentIds)
+            .flatMap((ls: LineSegment) => {
                 let v0Pair = [ls.profile.v0, ls.parent];
                 let vPair = [ls.profile.v, ls.parent];
                 return [v0Pair, vPair, null];
-            }
-        }).filter(el => el !== undefined);
-        const aPairs = lineSegments.flatMap((ls: LineSegment) => {
-            if (filterSegmentIds !== 'all_segments' && filterSegmentIds.has(ls.parent)) {
+            }).filter(el => el !== undefined);
+        const aPairs = filterLineSegments(lineSegments, filterSegmentIds)
+            .flatMap((ls: LineSegment) => {
                 let aPair = [ls.profile.a, ls.parent];
                 return [aPair, aPair, null];
-            }
-        }).filter(el => el !== undefined);
+            }).filter(el => el !== undefined);
 
         const plot = Plot.plot({
             x: {
@@ -218,12 +216,6 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
             },
             marks: [
               Plot.line(cumulativeTimes, {
-                // filter: (_, i: number) => {
-                //     if (filterSegmentIds === 'all_segments' || vPairs[i] === null) {
-                //         return true;
-                //     }
-                //     return filterSegmentIds.has(vPairs[i]![1]);
-                // },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => vPairs[i]?.[0],
                 stroke: "#4e79a7"
@@ -236,12 +228,6 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                 dy: -5
               })),
               Plot.line(cumulativeTimes, {
-                // filter: (_, i: number) => {
-                //     if (filterSegmentIds === 'all_segments' || aPairs[i] === null) {
-                //         return true;
-                //     }
-                //     return filterSegmentIds.has(aPairs[i]![1]);
-                // },
                 x: (_, i: number) => cumulativeTimes[i],
                 y: (_, i: number) => aPairs[i]?.[0],
                 stroke: "#e15759"
