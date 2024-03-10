@@ -17,18 +17,22 @@ export function toolpath(isa: ISA, instructions: Instruction[]): Toolpath {
 
 }
 
-export type Operation = "move";
+export type Operation = "move" | "arc";
 export interface IR {
     op: Operation;
+    opCode: string;
     args: {
         x: number | null;
         y: number | null;
         z: number | null;
         f: number | null;
+        dx: number | null;
+        dy: number | null;
     }, 
     state: {
         units: string | null;
-        toolOnBed: boolean
+        toolOnBed: boolean;
+        clockwise: number | null;
     }
 };
 
