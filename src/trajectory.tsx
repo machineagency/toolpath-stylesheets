@@ -11,16 +11,19 @@ import { exampleToolpaths } from './example-toolpaths';
 
 import * as Plot from "@observablehq/plot";
 
+import { fftInPlace, util, ComplexNumber } from "fft-js";
+
 import './trajectory.css'
 
 const DEBUG: boolean = false;
 
 type AllSegments = "all_segments";
+type SegmentIdSet = Set<number> | AllSegments;
 
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     lineSegments: LineSegment[];
-    filterSegmentIds: Set<number> | AllSegments;
+    filterSegmentIds: SegmentIdSet;
     min: number;
     max: number;
 }
@@ -165,6 +168,14 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     return <div className="flex" ref={containerRef}/>;
 }
 
+function filterLineSegments(lineSegments: LineSegment[],
+                            filterIds: SegmentIdSet) {
+    if (filterIds === 'all_segments') {
+        return lineSegments;
+    }
+    return lineSegments.filter(ls => filterIds.has(ls.parent));
+}
+
 function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,10 +183,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
         if (lineSegments === undefined) return;
         let cumulativeTimes: (number | null)[] = [];
         let soFar = 0;
-        lineSegments
-            .filter((ls: LineSegment) => {
-                return filterSegmentIds === 'all_segments' || filterSegmentIds.has(ls.parent)
-            })
+        filterLineSegments(lineSegments, filterSegmentIds)
             .forEach((ls: LineSegment) => {
                 let newTime = soFar + ls.profile.t;
                 cumulativeTimes.push(soFar);
@@ -250,10 +258,27 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
         if (containerRef.current) {
             containerRef.current.append(plot);
         }
+
         return () => plot.remove();
       }, [lineSegments, filterSegmentIds, min, max]);
 
     return <div ref={containerRef}/>;
+}
+
+function calculateFrequencies(lineSegments: LineSegment[], filterSegmentIds: SegmentIdSet): number[] {
+    let filteredSegments = filterLineSegments(lineSegments, filterSegmentIds);
+    if (filteredSegments.length === 0) {
+        return [];
+    }
+    let signal = filteredSegments.flatMap(ls => [ls.profile.v0, ls.profile.v]);
+    let maxLength = 1024;
+    let greatestPowerOfTwo = 2 ** Math.floor(Math.log2(signal.length));
+    let clipLength = Math.min(maxLength, greatestPowerOfTwo);
+    let subsignal = signal.slice(0, clipLength);
+    let phasor = subsignal.slice(0, subsignal.length) as unknown;
+    fftInPlace(phasor as number[]);
+    let freqBins = util.fftFreq(phasor as ComplexNumber[], 100);
+    return freqBins;
 }
 
 interface DepthHistogramProps {
@@ -743,7 +768,7 @@ function App() {
     const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
-    const [filterSegmentIds, setFilterSegmentIds] = useState<Set<number> | AllSegments>("all_segments");
+    const [filterSegmentIds, setFilterSegmentIds] = useState<SegmentIdSet>("all_segments");
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
