@@ -251,22 +251,6 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
     return <div ref={containerRef}/>;
 }
 
-function calculateFrequencies(lineSegments: LineSegment[], filterSegmentIds: SegmentIdSet): number[] {
-    let filteredSegments = filterLineSegments(lineSegments, filterSegmentIds);
-    if (filteredSegments.length === 0) {
-        return [];
-    }
-    let signal = filteredSegments.flatMap(ls => [ls.profile.v0, ls.profile.v]);
-    let maxLength = 1024;
-    let greatestPowerOfTwo = 2 ** Math.floor(Math.log2(signal.length));
-    let clipLength = Math.min(maxLength, greatestPowerOfTwo);
-    let subsignal = signal.slice(0, clipLength);
-    let phasor = subsignal.slice(0, subsignal.length) as unknown;
-    fftInPlace(phasor as number[]);
-    let freqBins = util.fftFreq(phasor as ComplexNumber[], 100);
-    return freqBins;
-}
-
 interface DepthHistogramProps {
     lineSegments: LineSegment[];
     onBinSelect: (setIds: Set<number> | AllSegments) => void;
@@ -750,6 +734,98 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }
     </div>)
 };
 
+interface FourierAnalysis {
+    frequencies: number[];
+    magnitudes: number[];
+}
+
+interface FourierAnalysisWindowProps {
+    lineSegments: LineSegment[];
+    filterSegmentIds: SegmentIdSet;
+}
+
+// @ts-ignore
+function convolve(signal: number[], filter: number[]) {
+    let outputLen = signal.length * 2;
+    let newSig = new Array<number>(outputLen);
+    let sum = 0;
+    //let signalMax = Math.max(Math.max(...signal), 1);
+    let filterMax = Math.max(Math.max(...filter), 1);
+    // let normSignal = signal.map((e) => e / signalMax);
+    let normFilter = filter.map((e) => e / filterMax);
+    for (let i = 0; i < outputLen; i++) {
+        for (let j = Math.max(0, i - signal.length); j <= i; j++) {
+            let jInBounds = j < signal.length && i - j < filter.length;
+            if (jInBounds) {
+                sum += signal[j] * normFilter[i - j];
+            }
+        }
+        newSig[i] = sum;
+        sum = 0;
+    }
+    let begin = Math.floor(outputLen * 0.25);
+    let end = Math.floor(outputLen * 0.75);
+    return newSig.slice(begin, end);
+}
+
+// @ts-ignore
+function makeSquareKernel() {
+    let low = new Array(75).fill(0);
+    let high = new Array(50).fill(50);
+    return low.concat(high).concat(low);
+}
+
+function calculateAnalysis(signal: number[], sampleRate: number): FourierAnalysis {
+    if (signal.length === 0) {
+        return { frequencies: [], magnitudes: [] };
+    }
+    let maxLength = 1024;
+    let greatestPowerOfTwo = 2 ** Math.floor(Math.log2(signal.length));
+    let clipLength = Math.min(maxLength, greatestPowerOfTwo);
+    let subsignal = signal.slice(0, clipLength);
+    let phasor = subsignal.slice(0, subsignal.length) as unknown;
+    fftInPlace(phasor as number[]);
+    let freqBins = util.fftFreq(phasor as ComplexNumber[], sampleRate);
+    let magnitudes = util.fftMag(phasor as ComplexNumber[]);
+    return { frequencies: freqBins, magnitudes: magnitudes };
+}
+
+function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
+                                    FourierAnalysisWindowProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        //TODO: low-pass filter the signal first--too many high frequencies
+        let culledSegments = filterLineSegments(lineSegments, filterSegmentIds);
+        let signal = culledSegments.flatMap(ls => [ls.profile.v0, ls.profile.v]);
+        // let filteredSignal = convolve(signal, makeSquareKernel());
+        let filteredSignal = signal;
+        let analysis = calculateAnalysis(filteredSignal, 100);
+        const plot = Plot.plot({
+           marks: [
+            // TODO: bin to integer frequencies?
+            Plot.dot(analysis.frequencies, {
+                x: (freq: number) => freq,
+                y: (_, i: number) => analysis.magnitudes[i],
+                r: 1
+            }),
+            Plot.crosshair(analysis.frequencies, {
+                x: (freq: number) => freq,
+                y: (_, i: number) => analysis.magnitudes[i],
+            })
+           ]
+        });
+        if (containerRef.current) {
+            containerRef.current.append(plot);
+        }
+        return () => plot.remove();
+    }, [lineSegments, filterSegmentIds]);
+    return (
+        <div ref={containerRef}>
+            <div className="plot-title">Fourier Analysis</div>
+        </div>
+    );
+}
+
 function App() {
     const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
@@ -800,6 +876,8 @@ function App() {
               filterSegmentIds={filterSegmentIds}
               min={minValue}
               max={maxValue}/>
+              <FourierAnalysisWindow lineSegments={lineSegments}
+                                     filterSegmentIds={filterSegmentIds}/>
         </div>
     );
 }
