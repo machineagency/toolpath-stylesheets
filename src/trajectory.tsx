@@ -266,7 +266,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
         const zPlot = Plot.plot({
           grid: true,
           marks: [
-            Plot.dot(lineSegments.flatMap((segment) => {
+            Plot.line(lineSegments.flatMap((segment) => {
                 let startPlusId = {...segment.start, id: segment.parent};
                 let endPlusId = {...segment.end, id: segment.parent};
                 return [startPlusId, endPlusId, null]
@@ -280,7 +280,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
                     }
                     return d.z;
                 },
-                r: 0.5
+                strokeWidth: 0.5
             }))
           ]
         });
@@ -311,7 +311,7 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     }, [lineSegments]);
     return (
         <div className="depth-histogram-container">
-            <div className="plot-title">Depth Histogram</div>
+            <div className="plot-title">Depth by Segment</div>
             <div className="depth-histogram" ref={containerRef}></div>
         </div>
     );
@@ -698,7 +698,7 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }
         // If no toolpath is selected, render empty divs for the graphs
         return (
             <div>
-                <div className="plot-title">Locations to be visited</div>
+                <div className="plot-title">XY Spatial Toolpath</div>
                 <div className="empty-plot">No toolpath selected</div>
 
                 {DEBUG && (
@@ -709,17 +709,13 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }
                     <div className="empty-plot">No toolpath selected</div>
                     </React.Fragment>
                 )}
-                <div className="plot-title">Fully-planned Segments</div>
+                <div className="plot-title">XY Spatial Toolpath</div>
                 <div className="empty-plot">No toolpath selected</div>
             </div>
         );
     }
 
     return (<div>
-        <div className="plot-title">Locations to be visited</div>
-        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
-                     min={min} max={max}></SegmentPlot>
-
         {/* {DEBUG && (
             <React.Fragment>
             <div className="plot-title">Pre-planned Segments</div>
@@ -728,9 +724,12 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }
             <ProfilePlot lineSegments={halfPlanned} min={min} max={max}></ProfilePlot>
             </React.Fragment>
         )} */}
-        <div className="plot-title">Fully-planned Segments</div>
+        <div className="plot-title">Velocity Curve</div>
         <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
                     min={min} max={max}></ProfilePlot>
+        <div className="plot-title">XY Spatial Toolpath</div>
+        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
+                     min={min} max={max}></SegmentPlot>
     </div>)
 };
 
