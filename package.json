@@ -12,6 +12,7 @@
     "@observablehq/plot": "github:observablehq/plot#fil/brush",
     "@vitejs/plugin-react": "^4.2.1",
     "d3": "^7.8.5",
+    "fft-js": "^0.0.12",
     "lit": "^2.7.4",
     "mathjs": "^12.3.0",
     "rc-slider": "^10.5.0",
