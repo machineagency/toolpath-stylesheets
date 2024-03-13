@@ -21,6 +21,7 @@ export type Operation = "move" | "arc";
 export interface IR {
     op: Operation;
     opCode: string;
+    originalInstruction: Instruction;
     args: {
         x: number | null;
         y: number | null;

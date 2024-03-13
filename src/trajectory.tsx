@@ -4,7 +4,7 @@ import 'rc-slider/assets/index.css';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
-import { IR } from './type-utils';
+import { IR, Instruction } from './type-utils';
 import { lowerEBB, lowerGCode, lowerSBP } from './ir';
 import { toolpath, Toolpath } from './type-utils';
 import { exampleToolpaths } from './example-toolpaths';
@@ -324,6 +324,7 @@ interface Vec3 {
 }
 
 interface Segment {
+    instruction: Instruction,
     moveId: number,
     startVelocity: number,
     endVelocity: number,
@@ -331,6 +332,7 @@ interface Segment {
 }
 
 interface LineSegment {
+    instruction: Instruction;
     parent: number,
     start: Vec3,
     end: Vec3,
@@ -368,9 +370,10 @@ function Vec3(x: number, y: number, z: number): Vec3 {
         z: z
     }
 }
-function segment(moveId: number, startVelocity: number, endVelocity: number, 
-        coords: Vec3): Segment {
+function segment(instruction: Instruction, moveId: number, startVelocity: number,
+                    endVelocity: number, coords: Vec3): Segment {
     return {
+        instruction: instruction,
         moveId: moveId,
         startVelocity: startVelocity,
         endVelocity: endVelocity,
@@ -378,9 +381,10 @@ function segment(moveId: number, startVelocity: number, endVelocity: number,
     }
 }
 
-function lineSegment(parent: number, start: Vec3, end: Vec3, unit: Vec3, 
-                     profile: FirstOrder, amax: number): LineSegment {
+function lineSegment(instruction: Instruction, parent: number, start: Vec3, end: Vec3,
+                     unit: Vec3, profile: FirstOrder, amax: number): LineSegment {
     return {
+        instruction: instruction,
         parent: parent,
         start: start,
         end: end,
@@ -421,8 +425,8 @@ function planTriplets(locations: Segment[], prePlanned: LineSegment[],
     }
 }
 
-function fromGeo(parent: number, v0: number, v1: number, start: Vec3, end: Vec3,
-    k1: KinematicLimits): LineSegment {
+function fromGeo(instruction: Instruction, parent: number, v0: number, v1: number,
+                    start: Vec3, end: Vec3, k1: KinematicLimits): LineSegment {
     let startVel = Math.abs(v0);
     let endVel = Math.abs(v1);
     let delta = Vec3(end.x - start.x, end.y - start.y, end.z - start.z)
@@ -430,7 +434,8 @@ function fromGeo(parent: number, v0: number, v1: number, start: Vec3, end: Vec3,
     let length = Math.sqrt((end.x - start.x)**2 + (end.y - start.y)**2);
     let profile = normalize(startVel, endVel, null, null, length) as FirstOrder;
     let unit = Vec3(delta.x / length, delta.y / length, delta.z / length);
-    return lineSegment(parent, start, end, unit, profile, limitVector(unit, k1.aMax));
+    return lineSegment(instruction, parent, start, end, unit, profile,
+                        limitVector(unit, k1.aMax));
 
 }
 
@@ -512,7 +517,7 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
         if (isNullMoveCommand(ir)) {
             return;
         }
-        let seg = segment(index, vMaxEitherAxis, vMaxEitherAxis,
+        let seg = segment(ir.originalInstruction, index, vMaxEitherAxis, vMaxEitherAxis,
                             Vec3(ir.args.x!, ir.args.y!, ir.args.z!));
         segments.push(seg);
     });
@@ -524,7 +529,8 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
         let segmentNorm = number(norm([startLocation.x - endLocation.x, startLocation.y - endLocation.y]));
 
         if (segmentNorm >= 1e-18) {
-            let segment = fromGeo(s.moveId, s.startVelocity, s.endVelocity, startLocation, endLocation, limits);
+            let segment = fromGeo(s.instruction, s.moveId, s.startVelocity,
+                                  s.endVelocity, startLocation, endLocation, limits);
             plannerSegments.push(segment);
             startLocation = endLocation;
         }
@@ -582,7 +588,7 @@ function* forwardPass(segments: LineSegment[], v0: number, limits: KinematicLimi
         }
         let seg = s;
         if (changed) {
-            seg = lineSegment(s.parent, s.start, s.end, s.unit, p, s.aMax);
+            seg = lineSegment(s.instruction, s.parent, s.start, s.end, s.unit, p, s.aMax);
         }
 
         for (let sub of planSegment(seg, velocityInit)) {
@@ -617,7 +623,7 @@ function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
         } else {
             p = normalize(v, null, a, null, s.profile.x);
         }
-        yield lineSegment(s.parent, s.start, s.end, s.unit, p!, s.aMax);
+        yield lineSegment(s.instruction, s.parent, s.start, s.end, s.unit, p!, s.aMax);
         return;
     }
 
@@ -635,8 +641,8 @@ function* planSegment(s: LineSegment, v: number, reverse: boolean = false) {
                           s.start.y + s.unit.y * firstProfile.x,
                           s.start.z + s.unit.z * firstProfile.x);
 
-    yield lineSegment(s.parent, s.start, crossing, s.unit, firstProfile, s.aMax);
-    yield lineSegment(s.parent, crossing, s.end, s.unit, secondProfile, s.aMax);
+    yield lineSegment(s.instruction, s.parent, s.start, crossing, s.unit, firstProfile, s.aMax);
+    yield lineSegment(s.instruction, s.parent, crossing, s.end, s.unit, secondProfile, s.aMax);
 }
 
 function reverseFirstOrder(profile: FirstOrder): FirstOrder {
@@ -825,6 +831,26 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
     );
 }
 
+interface InstructionWindowProps {
+    lineSegments: LineSegment[];
+    filterSegmentIds: SegmentIdSet;
+}
+
+function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindowProps) {
+    let filteredSegments = filterLineSegments(lineSegments, filterSegmentIds);
+    let instructions = filteredSegments.map(ls => ls.instruction);
+    let listItems = instructions.map((inst: Instruction, index: number) => {
+        return <li key={index}>{inst}</li>;
+    });
+
+    return (
+        <div>
+           <div className="plot-title">Instructions</div>
+           <ul>{listItems}</ul>
+        </div>
+    );
+}
+
 function App() {
     const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
@@ -876,6 +902,8 @@ function App() {
               min={minValue}
               max={maxValue}/>
               <FourierAnalysisWindow lineSegments={lineSegments}
+                                     filterSegmentIds={filterSegmentIds}/>
+              <InstructionWindow lineSegments={lineSegments}
                                      filterSegmentIds={filterSegmentIds}/>
         </div>
     );
