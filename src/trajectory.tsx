@@ -838,15 +838,19 @@ interface InstructionWindowProps {
 
 function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindowProps) {
     let filteredSegments = filterLineSegments(lineSegments, filterSegmentIds);
-    let instructions = filteredSegments.map(ls => ls.instruction);
+    let instructionsWithDups = filteredSegments.map(ls => ls.instruction);
+    let instructions = instructionsWithDups.filter((inst, idx, arr) => {
+        return idx === 0 || inst !== arr[idx - 1];
+    });
     let listItems = instructions.map((inst: Instruction, index: number) => {
         return <li key={index}>{inst}</li>;
     });
 
     return (
-        <div>
+        <div className='instruction-window'>
            <div className="plot-title">Instructions</div>
-           <ul>{listItems}</ul>
+           <div>|I| = {instructions.length}, |S| = {filteredSegments.length}</div>
+           <ul className="instruction-list">{listItems}</ul>
         </div>
     );
 }

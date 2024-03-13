@@ -10,3 +10,26 @@
 .dashboard-settings {
     display: flex;
 }
+
+.instruction-window {
+    padding-left: 10px;
+}
+
+.instruction-list {
+    list-style-type: none;
+    width: fit-content;
+    font-size: 9pt;
+    font-weight: 500;
+    max-height: 500px;
+    overflow-y: scroll;
+    padding-left: 0px;
+}
+
+.instruction-list li {
+    padding: 0.5em;
+}
+
+.instruction-list li:nth-child(2n + 1) {
+    background-color: gray;
+    color: white;
+}
