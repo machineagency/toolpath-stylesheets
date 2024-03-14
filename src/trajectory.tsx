@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import Slider from 'rc-slider';
-import 'rc-slider/assets/index.css';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
 import { norm, number, dot } from "mathjs";
@@ -24,25 +22,15 @@ interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     lineSegments: LineSegment[];
     filterSegmentIds: SegmentIdSet;
-    min: number;
-    max: number;
 }
 
 interface DashboardSettingsProps {
     onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
-interface RangeSliderProps {
-    absoluteMax: number;
-    onChange: (newRange: number[] | number) => void;
-}
-
-
 interface PlotProps {
     lineSegments: LineSegment[];
     filterSegmentIds: Set<number> | AllSegments;
-    min: number;
-    max: number;
 }
 
 const TOOLPATH_TABLE: Record<string, Toolpath> = {
@@ -73,35 +61,6 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     );
 }
 
-function RangeSlider({ absoluteMax, onChange }: RangeSliderProps) {
-    const [range, setRange] = useState<number[]>([0, absoluteMax]);
-
-    const handleRangeChange = (newRange: number | number[]) => {
-        setRange(newRange as number[]);
-        onChange(newRange);
-    };
-
-    useEffect(() => {
-        setRange([0, absoluteMax]);
-    }, [absoluteMax]);
-
-    return (
-        <div className="range-slider">
-            <Slider
-              range
-              min={0}
-              max={absoluteMax}
-              value={range}
-              onChange={handleRangeChange}
-            />
-            <div className="range-label">
-                Range: {range[0]} - {range[1]}
-            </div>
-
-        </div>
-    )
-}
-
 interface Vec3WithId {
     x: number;
     y: number;
@@ -109,7 +68,7 @@ interface Vec3WithId {
     id: number;
 }
 
-function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
+function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const findXYExtrema = (lineSegments: LineSegment[]): [number, number] => {
@@ -163,7 +122,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
         return () => {
             xyPlot.remove();
         };
-      }, [lineSegments, filterSegmentIds, min, max]);
+      }, [lineSegments, filterSegmentIds]);
 
     return <div className="flex" ref={containerRef}/>;
 }
@@ -176,7 +135,7 @@ function filterLineSegments(lineSegments: LineSegment[],
     return lineSegments.filter(ls => ls === null || filterIds.has(ls.parent));
 }
 
-function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
+function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -192,7 +151,6 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
                 soFar = newTime;
             });
 
-        cumulativeTimes = cumulativeTimes.slice(min * 3, max * 3);
         const vPairs = filterLineSegments(lineSegments, filterSegmentIds)
             .flatMap((ls: LineSegment) => {
                 let v0Pair = [ls.profile.v0, ls.parent];
@@ -246,7 +204,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds, min, max }: PlotProps) {
         }
 
         return () => plot.remove();
-      }, [lineSegments, filterSegmentIds, min, max]);
+      }, [lineSegments, filterSegmentIds]);
 
     return <div ref={containerRef}/>;
 }
@@ -697,7 +655,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -731,11 +689,9 @@ function TrajectoryWindow({ toolpath, min, max, lineSegments, filterSegmentIds }
             </React.Fragment>
         )} */}
         <div className="plot-title">Velocity Curve</div>
-        <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
-                    min={min} max={max}></ProfilePlot>
+        <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
         <div className="plot-title">XY Spatial Toolpath</div>
-        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}
-                     min={min} max={max}></SegmentPlot>
+        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
     </div>)
 };
 
@@ -870,20 +826,8 @@ function App() {
         if (currentToolpath !== null) {
             let { fullyPlanned } = computeLineSegments(currentToolpath);
             setLineSegments(fullyPlanned);
-            setMinValue(0);
-            setMaxValue(fullyPlanned.length);
         }
     }, [currentToolpath]);
-
-    // slider min and max values
-    const [minValue, setMinValue] = useState<number>(0);
-    const [maxValue, setMaxValue] = useState<number>(lineSegments.length);
-
-    const handleRangeChange = (newRange: number[] | number) => {
-        let range = newRange as number[];
-        setMinValue(range[0]);
-        setMaxValue(range[1]);
-    }
 
     const handleBinSelect = (selectIds: Set<number> | AllSegments) => {
         if (selectIds === null) {
@@ -897,14 +841,11 @@ function App() {
     return (
         <div>
             <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
-            <RangeSlider absoluteMax={lineSegments.length} onChange={handleRangeChange}></RangeSlider>
             <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
-              filterSegmentIds={filterSegmentIds}
-              min={minValue}
-              max={maxValue}/>
+              filterSegmentIds={filterSegmentIds}/>
               <FourierAnalysisWindow lineSegments={lineSegments}
                                      filterSegmentIds={filterSegmentIds}/>
               <InstructionWindow lineSegments={lineSegments}
