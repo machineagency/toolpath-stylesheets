@@ -67,7 +67,7 @@ const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
     };
   
     return (
-        <div>
+        <div className="text-input">
           <label>{label}</label>
           <input
             type="text"
@@ -131,6 +131,18 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
       });
     };
 
+    let inputElements = Object.keys(limitInputs).map(key => {
+        return (
+           <TextInput
+                label={key}
+                key={key}
+                value={limitInputs[key as keyof LimitInputs]}
+                onValueChange={(newValue) => handleValueChange(
+                                    key as keyof LimitInputs, newValue)}
+            />
+        ); 
+    });
+
     // TODO: pass the parsed (and ideally validated) kl to parent and redraw graphs
     let kl = parseLimitInputs(limitInputs);
 
@@ -139,46 +151,9 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
                 {toolpathsOptionElements}
             </select>
-            <TextInput
-                label="Max Velocity (X)"
-                value={limitInputs.vMaxX}
-                onValueChange={(newValue) => handleValueChange('vMaxX', newValue)}
-            />
-            <TextInput
-                label="Max Velocity (Y)"
-                value={limitInputs.vMaxY}
-                onValueChange={(newValue) => handleValueChange('vMaxY', newValue)}
-            />
-            <TextInput
-                label="Max Velocity (Z)"
-                value={limitInputs.vMaxZ}
-                onValueChange={(newValue) => handleValueChange('vMaxZ', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (X)"
-                value={limitInputs.aMaxX}
-                onValueChange={(newValue) => handleValueChange('aMaxX', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (Y)"
-                value={limitInputs.aMaxY}
-                onValueChange={(newValue) => handleValueChange('aMaxY', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (Z)"
-                value={limitInputs.aMaxZ}
-                onValueChange={(newValue) => handleValueChange('aMaxZ', newValue)}
-            />
-            <TextInput
-                label="Junction Deviation"
-                value={limitInputs.junctionDeviation}
-                onValueChange={(newValue) => handleValueChange('junctionDeviation', newValue)}
-            />
-            <TextInput
-                label="Junction Speed"
-                value={limitInputs.junctionSpeed}
-                onValueChange={(newValue) => handleValueChange('junctionSpeed', newValue)}
-            />
+            <div className="klimit-inputs">
+                {inputElements}
+            </div>
         </div>
     );
 }
