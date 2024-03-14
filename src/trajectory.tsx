@@ -48,15 +48,137 @@ const TOOLPATH_TABLE: Record<string, Toolpath> = {
     propellerTopPocket: exampleToolpaths.propellerTopPocket
 };
 
+interface TextInputProps {
+    label: string;
+    value: string;
+    onValueChange: (newValue: string) => void;
+}
+
+const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
+    const [error, setError] = useState('');
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.trim();
+        if (/^\d*\.?\d*$/.test(value)) {
+            setError('');
+            onValueChange(value);
+        } else {
+            setError('Please enter a valid number');
+        }
+    };
+  
+    return (
+        <div>
+          <label>{label}</label>
+          <input
+            type="text"
+            value={value}
+            onChange={handleInputChange}
+            placeholder={`Enter ${label}`}
+        />
+        {error && <div style={{ color: 'red' }}>{error}</div>}
+      </div>
+    );
+};
+
+interface LimitInputs {
+    vMaxX: string;
+    vMaxY: string;
+    vMaxZ: string;
+    aMaxX: string;
+    aMaxY: string;
+    aMaxZ: string;
+    junctionDeviation: string;
+    junctionSpeed: string;
+}
+
 function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
     });
+    const defaultKLInputs: LimitInputs = {
+        vMaxX: '1',
+        vMaxY: '1',
+        vMaxZ: '1',
+        aMaxX: '1',
+        aMaxY: '1',
+        aMaxZ: '1',
+        junctionDeviation: '1',
+        junctionSpeed: '1'
+    };
+    const parseLimitInputs = (inputs: LimitInputs): KinematicLimits => {
+        // TODO: deal with NaNs systematically
+        return {
+            vMax: {
+                x: parseFloat(inputs.vMaxX),
+                y: parseFloat(inputs.vMaxY),
+                z: parseFloat(inputs.vMaxZ),
+            },
+            aMax: {
+                x: parseFloat(inputs.aMaxX),
+                y: parseFloat(inputs.aMaxY),
+                z: parseFloat(inputs.aMaxZ),
+            },
+            junctionDeviation: parseFloat(inputs.junctionDeviation),
+            junctionSpeed: parseFloat(inputs.junctionSpeed)
+        };
+    };
+    const [limitInputs, setLimitInputs] = useState<LimitInputs>(defaultKLInputs);
+
+    const handleValueChange = (key: keyof LimitInputs, newValue: string) => {
+      setLimitInputs({
+        ...limitInputs,
+        [key]: newValue,
+      });
+    };
+
+    // TODO: pass the parsed (and ideally validated) kl to parent and redraw graphs
+    let kl = parseLimitInputs(limitInputs);
+
     return (
         <div className="dashboard-settings">
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
                 {toolpathsOptionElements}
             </select>
+            <TextInput
+                label="Max Velocity (X)"
+                value={limitInputs.vMaxX}
+                onValueChange={(newValue) => handleValueChange('vMaxX', newValue)}
+            />
+            <TextInput
+                label="Max Velocity (Y)"
+                value={limitInputs.vMaxY}
+                onValueChange={(newValue) => handleValueChange('vMaxY', newValue)}
+            />
+            <TextInput
+                label="Max Velocity (Z)"
+                value={limitInputs.vMaxZ}
+                onValueChange={(newValue) => handleValueChange('vMaxZ', newValue)}
+            />
+            <TextInput
+                label="Max Acceleration (X)"
+                value={limitInputs.aMaxX}
+                onValueChange={(newValue) => handleValueChange('aMaxX', newValue)}
+            />
+            <TextInput
+                label="Max Acceleration (Y)"
+                value={limitInputs.aMaxY}
+                onValueChange={(newValue) => handleValueChange('aMaxY', newValue)}
+            />
+            <TextInput
+                label="Max Acceleration (Z)"
+                value={limitInputs.aMaxZ}
+                onValueChange={(newValue) => handleValueChange('aMaxZ', newValue)}
+            />
+            <TextInput
+                label="Junction Deviation"
+                value={limitInputs.junctionDeviation}
+                onValueChange={(newValue) => handleValueChange('junctionDeviation', newValue)}
+            />
+            <TextInput
+                label="Junction Speed"
+                value={limitInputs.junctionSpeed}
+                onValueChange={(newValue) => handleValueChange('junctionSpeed', newValue)}
+            />
         </div>
     );
 }
@@ -410,7 +532,8 @@ function limitVector(unitVec: Vec3, limits: Vec3): number {
 function normalize(v0: number | null, v: number | null, a: number | null,
                     t: number | null, x: number | null): FirstOrder | null {
     let arr = [v0, v, a, t, x];
-    if ((arr.length - arr.filter(element => element !== null && !isNaN(element)).length) != 2) {
+    if ((arr.length - arr.filter(element => element !== null
+            && !isNaN(element)).length) != 2) {
         return null;
     }
 
@@ -484,7 +607,8 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
 
     segments.forEach(function (s: Segment) {
         let endLocation = s.coords;
-        let segmentNorm = number(norm([startLocation.x - endLocation.x, startLocation.y - endLocation.y]));
+        let segmentNorm = number(norm([startLocation.x - endLocation.x,
+                                       startLocation.y - endLocation.y]));
 
         if (segmentNorm >= 1e-18) {
             let segment = fromGeo(s.instruction, s.moveId, s.startVelocity,
@@ -624,7 +748,8 @@ function computeJunctionVelocity(p: LineSegment, s: LineSegment, limits: Kinemat
 
         let junctionAcceleration = limitValueByAxis(limits.aMax, junctionVect);
         let sinThetaD2 = Math.sqrt(0.5 * (1 - junctionCos));
-        let junctionVelocity = (junctionAcceleration * limits.junctionDeviation * sinThetaD2) / (1 - sinThetaD2);
+        let junctionVelocity = (junctionAcceleration * limits.junctionDeviation
+                                * sinThetaD2) / (1 - sinThetaD2);
         return Math.max(limits.junctionSpeed, junctionVelocity);
     }
 }
@@ -705,7 +830,7 @@ interface FourierAnalysisWindowProps {
     filterSegmentIds: SegmentIdSet;
 }
 
-// @ts-ignore
+// @ts-ignore: keep convolution here now in case we need it later.
 function convolve(signal: number[], filter: number[]) {
     let outputLen = signal.length * 2;
     let newSig = new Array<number>(outputLen);
