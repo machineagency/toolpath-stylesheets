@@ -26,6 +26,7 @@ interface TrajectoryWindowProps {
 
 interface DashboardSettingsProps {
     onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+    onLimitChange: (newLimits: KinematicLimits) => void;
 }
 
 interface PlotProps {
@@ -91,19 +92,19 @@ interface LimitInputs {
     junctionSpeed: string;
 }
 
-function DashboardSettings({ onSelect }: DashboardSettingsProps) {
+function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) {
     const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
     });
     const defaultKLInputs: LimitInputs = {
-        vMaxX: '1',
-        vMaxY: '1',
-        vMaxZ: '1',
-        aMaxX: '1',
-        aMaxY: '1',
-        aMaxZ: '1',
-        junctionDeviation: '1',
-        junctionSpeed: '1'
+        vMaxX: '300.0',
+        vMaxY: '300.0',
+        vMaxZ: '150.0',
+        aMaxX: '50.0',
+        aMaxY: '50.0',
+        aMaxZ: '25.0',
+        junctionDeviation: '0.001',
+        junctionSpeed: '0.01'
     };
     const parseLimitInputs = (inputs: LimitInputs): KinematicLimits => {
         // TODO: deal with NaNs systematically
@@ -125,11 +126,16 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     const [limitInputs, setLimitInputs] = useState<LimitInputs>(defaultKLInputs);
 
     const handleValueChange = (key: keyof LimitInputs, newValue: string) => {
-      setLimitInputs({
-        ...limitInputs,
-        [key]: newValue,
-      });
+        setLimitInputs({
+          ...limitInputs,
+          [key]: newValue,
+        });
     };
+
+    useEffect(() => {
+        let kl = parseLimitInputs(limitInputs);
+        onLimitChange(kl);
+    }, [limitInputs])
 
     let inputElements = Object.keys(limitInputs).map(key => {
         return (
@@ -144,7 +150,6 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
     });
 
     // TODO: pass the parsed (and ideally validated) kl to parent and redraw graphs
-    let kl = parseLimitInputs(limitInputs);
 
     return (
         <div className="dashboard-settings">
@@ -449,16 +454,6 @@ function lineSegment(instruction: Instruction, parent: number, start: Vec3, end:
     }
 }
 
-function kinematicLimits(maxVelocity: Vec3, maxAcceleration: Vec3,
-         junctionSpeed: number, junctionDeviation: number): KinematicLimits {
-    return {
-        vMax: maxVelocity,
-        aMax: maxAcceleration,
-        junctionSpeed: junctionSpeed,
-        junctionDeviation: junctionDeviation
-    }
-}
-
 function firstOrder(initialVelocity: number, finalVelocity: number, acceleration: number,
          timeDuration: number, length: number): FirstOrder {
     return {
@@ -552,7 +547,7 @@ function normalize(v0: number | null, v: number | null, a: number | null,
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
-function computeLineSegments(tp: Toolpath): TrajectoryPasses {
+function computeLineSegments(tp: Toolpath, kl: KinematicLimits): TrajectoryPasses {
     let irs;
     // handles lowering
     if (tp.isa == "ebb") {
@@ -566,9 +561,7 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
     let isNullMoveCommand = (ir: IR) => {
         return ir.op === "move" && (ir.args.x === null || ir.args.y === null);
     }
-    let limits = kinematicLimits(Vec3(300.0, 300.0, 150.0),
-                                 Vec3(50.0, 50.0, 25.0), 1e-3, 1e-2); // can change later
-    let vMaxEitherAxis = Math.max(limits.vMax.x, limits.vMax.y);
+    let vMaxEitherAxis = Math.max(kl.vMax.x, kl.vMax.y);
     irs.forEach(function (ir: IR, index: number) {
         if (isNullMoveCommand(ir)) {
             return;
@@ -587,15 +580,15 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
 
         if (segmentNorm >= 1e-18) {
             let segment = fromGeo(s.instruction, s.moveId, s.startVelocity,
-                                  s.endVelocity, startLocation, endLocation, limits);
+                                  s.endVelocity, startLocation, endLocation, kl);
             plannerSegments.push(segment);
             startLocation = endLocation;
         }
     });
 
-    let halfPlanned = [... forwardPass(plannerSegments, 0, limits)];
+    let halfPlanned = [... forwardPass(plannerSegments, 0, kl)];
 
-    let plannedSegments = [...planSegments(plannerSegments, limits)];
+    let plannedSegments = [...planSegments(plannerSegments, kl)];
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }
@@ -913,9 +906,24 @@ function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindo
 
 function App() {
     const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
+    const defaultLimits: KinematicLimits = {
+        vMax: {
+            x: 300,
+            y: 300,
+            z: 150
+        },
+        aMax: {
+            x: 50,
+            y: 50,
+            z: 25
+        },
+        junctionDeviation: 1e-3,
+        junctionSpeed: 1e-2
+    }
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
     const [filterSegmentIds, setFilterSegmentIds] = useState<SegmentIdSet>("all_segments");
+    const [kinematicLimits, setKinematicLimits] = useState<KinematicLimits>(defaultLimits)
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
@@ -924,12 +932,12 @@ function App() {
 
     useEffect(() => {
         if (currentToolpath !== null) {
-            let { fullyPlanned } = computeLineSegments(currentToolpath);
+            let { fullyPlanned } = computeLineSegments(currentToolpath, kinematicLimits);
             setLineSegments(fullyPlanned);
         }
-    }, [currentToolpath]);
+    }, [currentToolpath, kinematicLimits]);
 
-    const handleBinSelect = (selectIds: Set<number> | AllSegments) => {
+    const handleBinSelect = (selectIds: SegmentIdSet) => {
         if (selectIds === null) {
             setFilterSegmentIds('all_segments');
         }
@@ -940,7 +948,8 @@ function App() {
 
     return (
         <div>
-            <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
+            <DashboardSettings onSelect={selectToolpath}
+                            onLimitChange={setKinematicLimits}></DashboardSettings>
             <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
