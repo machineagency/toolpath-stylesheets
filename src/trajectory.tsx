@@ -168,11 +168,17 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
     );
 }
 
-interface Vec3WithId {
-    x: number;
-    y: number;
-    z: number;
-    id: number;
+let l1Norm = (v1: Vec3, v2: Vec3) => {
+    let dx = Math.abs(v1.x - v2.x);
+    let dy = Math.abs(v1.y - v2.y);
+    let dz = Math.abs(v1.z - v2.z);
+    return dx + dy + dz;
+}
+let l2Norm = (v1: Vec3, v2: Vec3) => {
+    let dx = (v1.x - v2.x) ** 2;
+    let dy = (v1.y - v2.y) ** 2;
+    let dz = Math.abs(v1.z - v2.z);
+    return Math.sqrt(dx + dy + dz);
 }
 
 function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
@@ -199,85 +205,119 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
                 Math.log((1 / distance) / timeDiff)
             );
         };
-        // Assumption: look backwards and forwards each k/2 segment's start only
-        // TODO: remove explicit slicing for performance
-        let weightedPoints = lineSegments.flatMap((segment, idx, arr) => {
-            let windowLower = Math.max(0, idx - windowSize);
-            let windowUpper = Math.min(arr.length - 1, idx + windowSize);
-            let window = arr.slice(windowLower, windowUpper);
-            let l1Norm = (ls1: LineSegment, ls2: LineSegment) => {
-                let dx = Math.abs(ls1.start.x - ls2.start.x);
-                let dy = Math.abs(ls1.start.y - ls2.start.y);
-                return dx + dy;
+        let filteredSegments = lineSegments.filter((ls) => {
+            if (filterSegmentIds === 'all_segments') {
+                return true;
             }
-            let windowCenter = window[windowCenterIdx];
-            let weightedDistanceResiduals = window.map((ls, idx, arr) => {
-                if (idx === windowCenterIdx) {
-                    return 0;
-                }
-                let distance = l1Norm(ls, windowCenter);
-                let subWindow = idx <= windowCenterIdx
-                                    ? arr.slice(idx, windowCenterIdx)
-                                    : arr.slice(windowCenterIdx + 1, idx);
-                let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
-                    return timeSoFar + currLs.profile.t;
-                }, 0);
-                return cost(distance, timeDiff);
-            });
-            return {
-                id: segment.parent,
-                x: segment.start.x,
-                y: segment.start.y,
-                z: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
-            };
+            return filterSegmentIds.has(ls.parent);
         });
+        let tssDatasets = {
+            weightedPoints: filteredSegments.flatMap((segment, idx, arr) => {
+                let windowLower = Math.max(0, idx - windowSize);
+                let windowUpper = Math.min(arr.length - 1, idx + windowSize);
+                let window = arr.slice(windowLower, windowUpper);
+                let windowCenter = window[windowCenterIdx];
+                let weightedDistanceResiduals = window.map((ls, idx, arr) => {
+                    if (idx === windowCenterIdx) {
+                        return 0;
+                    }
+                    let distance = l2Norm(ls.start, windowCenter.start);
+                    let subWindow = idx <= windowCenterIdx
+                                        ? arr.slice(idx, windowCenterIdx)
+                                        : arr.slice(windowCenterIdx + 1, idx);
+                    let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
+                        return timeSoFar + currLs.profile.t;
+                    }, 0);
+                    return cost(distance, timeDiff);
+                });
+                return {
+                    id: segment.parent,
+                    x: segment.start.x,
+                    y: segment.start.y,
+                    z: segment.start.z,
+                    weight: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
+                };
+            }),
+            discreteLines: filteredSegments.flatMap((segment) => {
+                let startPlusId = {...segment.start, id: segment.parent};
+                let endPlusId = {...segment.end, id: segment.parent};
+                return [startPlusId, endPlusId, null]
+            }),
+            lsPairs: filteredSegments.map((_, i, arr) => {
+                if (i === arr.length - 1) {
+                    return null;
+                }
+                let curr = arr[i];
+                let next = arr[i + 1];
+                if (curr.start.z < 0 && next.start.z < 0) {
+                    return null;
+                }
+                return [curr, next];
+            }).filter(el => el !== null)
+        };
+        let tssMarks = {
+            lines: [
+                Plot.line(tssDatasets.discreteLines, {
+                    x: (d: Vec3 | null) => {
+                        if (d === null) {
+                            return null;
+                        }
+                        return d.x;
+                    },
+                    y: (d: Vec3 | null) => {
+                        if (d === null) {
+                            return null;
+                        }
+                        return d.y;
+                    },
+                    strokeWidth: 0.5
+                })
+            ],
+            sharpAngles: [
+                Plot.dot(tssDatasets.lsPairs, {
+                    r: (pair: [LineSegment, LineSegment]) => {
+                        // TODO: debug - missing certain corners
+                        // TODO: min norm? also move this preprocessing into data stuff
+                        let curr = pair[0];
+                        let next = pair[1];
+                        let theta = Math.acos(dot([next.unit.x, next.unit.y],
+                            [curr.unit.x, curr.unit.y]));
+                        return 2 * Math.PI - Math.abs(theta);
+                    },
+                    strokeWidth: 0,
+                    fill: 'red',
+                    opacity: 0.5,
+                    x: (pair: [LineSegment, LineSegment]) => pair[0].end.x,
+                    y: (pair: [LineSegment, LineSegment]) => pair[0].end.y
+                })
+            ],
+            heatMapBins: [
+                Plot.rect(tssDatasets.weightedPoints,
+                    Plot.bin({ fill: 'proportion' }, {
+                        x: { value: 'x', interval: 0.1 },
+                        y: { value: 'y', interval: 0.1 }
+                    })
+                )
+            ],
+            heatMapDensity: [
+                Plot.density(tssDatasets.weightedPoints, {
+                    x: 'x',
+                    y: 'y',
+                    weight: (pt) => pt.z <= 0 ? Math.log10(pt.weight) : 0,
+                    bandwidth: 5,
+                    fill: 'density'
+                })
+            ]
+        };
         const xyPlot = Plot.plot({
-          grid: true,
-          x: {
-            domain: extrema
+          x: { domain: extrema },
+          y: { domain: extrema },
+          inset: 10,
+          color: {
+            scheme: 'viridis',
+            reverse: true
           },
-          y: {
-            domain: extrema
-          },
-          // TODO: try cooler marks :)
-          marks: [
-            Plot.dot(weightedPoints, {
-                filter: (pt: Vec3WithId) => {
-                    return (filterSegmentIds === 'all_segments')
-                        ? true : filterSegmentIds.has(pt.id);
-                },
-                x: 'x',
-                y: 'y',
-                r: 'z',
-                strokeWidth: 0,
-                fill: 'gray'
-            })
-            // Plot.line(lineSegments.flatMap((segment) => {
-            //     let startPlusId = {...segment.start, id: segment.parent};
-            //     let endPlusId = {...segment.end, id: segment.parent};
-            //     return [startPlusId, endPlusId, null]
-            // }), {
-            //     filter: (point: Vec3WithId | null) => {
-            //         if (point === null || filterSegmentIds === 'all_segments') {
-            //             return true;
-            //         } else {
-            //             return filterSegmentIds.has(point.id);
-            //         }
-            //     },
-            //     x: (d: Vec3 | null) => {
-            //         if (d === null) {
-            //             return null;
-            //         }
-            //         return d.x;
-            //     },
-            //     y: (d: Vec3 | null) => {
-            //         if (d === null) {
-            //             return null;
-            //         }
-            //         return d.y;
-            //     }
-            // })
-          ]
+          marks: tssMarks.sharpAngles.concat(tssMarks.lines)
         });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
