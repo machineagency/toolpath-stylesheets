@@ -187,6 +187,50 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
     useEffect(() => {
         if (lineSegments === undefined) return;
         let extrema = findXYExtrema(lineSegments);
+        let windowSize = 7;
+        let windowCenterIdx = Math.floor(windowSize / 2);
+        let cost = (distance: number, timeDiff: number) => {
+            if (distance === 0 || timeDiff === 0) {
+                // It seems we hit this case every time, so just ignore it
+                // By returning 0 until we understand what's going on.
+                return 0;
+            }
+            return Math.max(0,
+                Math.log((1 / distance) / timeDiff)
+            );
+        };
+        // Assumption: look backwards and forwards each k/2 segment's start only
+        // TODO: remove explicit slicing for performance
+        let weightedPoints = lineSegments.flatMap((segment, idx, arr) => {
+            let windowLower = Math.max(0, idx - windowSize);
+            let windowUpper = Math.min(arr.length - 1, idx + windowSize);
+            let window = arr.slice(windowLower, windowUpper);
+            let l1Norm = (ls1: LineSegment, ls2: LineSegment) => {
+                let dx = Math.abs(ls1.start.x - ls2.start.x);
+                let dy = Math.abs(ls1.start.y - ls2.start.y);
+                return dx + dy;
+            }
+            let windowCenter = window[windowCenterIdx];
+            let weightedDistanceResiduals = window.map((ls, idx, arr) => {
+                if (idx === windowCenterIdx) {
+                    return 0;
+                }
+                let distance = l1Norm(ls, windowCenter);
+                let subWindow = idx <= windowCenterIdx
+                                    ? arr.slice(idx, windowCenterIdx)
+                                    : arr.slice(windowCenterIdx + 1, idx);
+                let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
+                    return timeSoFar + currLs.profile.t;
+                }, 0);
+                return cost(distance, timeDiff);
+            });
+            return {
+                id: segment.parent,
+                x: segment.start.x,
+                y: segment.start.y,
+                z: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
+            };
+        });
         const xyPlot = Plot.plot({
           grid: true,
           x: {
@@ -195,32 +239,44 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
           y: {
             domain: extrema
           },
+          // TODO: try cooler marks :)
           marks: [
-            Plot.line(lineSegments.flatMap((segment) => {
-                let startPlusId = {...segment.start, id: segment.parent};
-                let endPlusId = {...segment.end, id: segment.parent};
-                return [startPlusId, endPlusId, null]
-            }), {
-                filter: (point: Vec3WithId | null) => {
-                    if (point === null || filterSegmentIds === 'all_segments') {
-                        return true;
-                    } else {
-                        return filterSegmentIds.has(point.id);
-                    }
+            Plot.dot(weightedPoints, {
+                filter: (pt: Vec3WithId) => {
+                    return (filterSegmentIds === 'all_segments')
+                        ? true : filterSegmentIds.has(pt.id);
                 },
-                x: (d: Vec3 | null) => {
-                    if (d === null) {
-                        return null;
-                    }
-                    return d.x;
-                },
-                y: (d: Vec3 | null) => {
-                    if (d === null) {
-                        return null;
-                    }
-                    return d.y;
-                }
+                x: 'x',
+                y: 'y',
+                r: 'z',
+                strokeWidth: 0,
+                fill: 'gray'
             })
+            // Plot.line(lineSegments.flatMap((segment) => {
+            //     let startPlusId = {...segment.start, id: segment.parent};
+            //     let endPlusId = {...segment.end, id: segment.parent};
+            //     return [startPlusId, endPlusId, null]
+            // }), {
+            //     filter: (point: Vec3WithId | null) => {
+            //         if (point === null || filterSegmentIds === 'all_segments') {
+            //             return true;
+            //         } else {
+            //             return filterSegmentIds.has(point.id);
+            //         }
+            //     },
+            //     x: (d: Vec3 | null) => {
+            //         if (d === null) {
+            //             return null;
+            //         }
+            //         return d.x;
+            //     },
+            //     y: (d: Vec3 | null) => {
+            //         if (d === null) {
+            //             return null;
+            //         }
+            //         return d.y;
+            //     }
+            // })
           ]
         });
         if (containerRef.current) {
