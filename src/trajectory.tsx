@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
-import { norm, number, dot } from "mathjs";
+import { norm, number, dot, isNaN } from "mathjs";
 import { IR, Instruction } from './type-utils';
 import { lowerEBB, lowerGCode, lowerSBP } from './ir';
 import { toolpath, Toolpath } from './type-utils';
@@ -56,15 +56,11 @@ interface TextInputProps {
 }
 
 const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
-    const [error, setError] = useState('');
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.trim();
         if (/^\d*\.?\d*$/.test(value)) {
-            setError('');
             onValueChange(value);
-        } else {
-            setError('Please enter a valid number');
-        }
+        } 
     };
   
     return (
@@ -76,7 +72,6 @@ const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
             onChange={handleInputChange}
             placeholder={`Enter ${label}`}
         />
-        {error && <div style={{ color: 'red' }}>{error}</div>}
       </div>
     );
 };
@@ -106,9 +101,13 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
         junctionDeviation: '0.001',
         junctionSpeed: '0.01'
     };
-    const parseLimitInputs = (inputs: LimitInputs): KinematicLimits => {
-        // TODO: deal with NaNs systematically
-        return {
+    const parseLimitInputs = (inputs: LimitInputs): KinematicLimits | null => {
+        let validate = (kl: KinematicLimits) => {
+            return !(isNaN(kl.vMax.x) || isNaN(kl.vMax.y) || isNaN(kl.vMax.z)
+                || isNaN(kl.aMax.x) || isNaN(kl.aMax.y) || isNaN(kl.aMax.z)
+                || isNaN(kl.junctionDeviation) || isNaN(kl.junctionSpeed));
+        };
+        let kl = {
             vMax: {
                 x: parseFloat(inputs.vMaxX),
                 y: parseFloat(inputs.vMaxY),
@@ -122,6 +121,10 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
             junctionDeviation: parseFloat(inputs.junctionDeviation),
             junctionSpeed: parseFloat(inputs.junctionSpeed)
         };
+        if (validate(kl)) {
+            return kl;
+        }
+        return null;
     };
     const [limitInputs, setLimitInputs] = useState<LimitInputs>(defaultKLInputs);
 
@@ -134,7 +137,9 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
 
     useEffect(() => {
         let kl = parseLimitInputs(limitInputs);
-        onLimitChange(kl);
+        if (kl !== null) {
+            onLimitChange(kl);
+        }
     }, [limitInputs])
 
     let inputElements = Object.keys(limitInputs).map(key => {
