@@ -213,6 +213,15 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
         });
         let tssDatasets = {
             weightedPoints: filteredSegments.flatMap((segment, idx, arr) => {
+                if (filteredSegments.length < windowSize) {
+                    return {
+                        id: segment.parent,
+                        x: segment.start.x,
+                        y: segment.start.y,
+                        z: segment.start.z,
+                        weight: 1
+                    };
+                }
                 let windowLower = Math.max(0, idx - windowSize);
                 let windowUpper = Math.min(arr.length - 1, idx + windowSize);
                 let window = arr.slice(windowLower, windowUpper);
