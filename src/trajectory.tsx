@@ -168,12 +168,14 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
     );
 }
 
+// @ts-ignore
 let l1Norm = (v1: Vec3, v2: Vec3) => {
     let dx = Math.abs(v1.x - v2.x);
     let dy = Math.abs(v1.y - v2.y);
     let dz = Math.abs(v1.z - v2.z);
     return dx + dy + dz;
 }
+
 let l2Norm = (v1: Vec3, v2: Vec3) => {
     let dx = (v1.x - v2.x) ** 2;
     let dy = (v1.y - v2.y) ** 2;
