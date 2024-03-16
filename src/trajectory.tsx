@@ -21,16 +21,19 @@ type SegmentIdSet = Set<number> | AllSegments;
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     lineSegments: LineSegment[];
+    tssMarks: Set<TSSMark>;
     filterSegmentIds: SegmentIdSet;
 }
 
 interface DashboardSettingsProps {
     onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
     onLimitChange: (newLimits: KinematicLimits) => void;
+    onTSSChange: (marks: Set<TSSMark>) => void;
 }
 
 interface PlotProps {
     lineSegments: LineSegment[];
+    selectedTSSMarks: Set<TSSMark>;
     filterSegmentIds: Set<number> | AllSegments;
 }
 
@@ -76,6 +79,49 @@ const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
     );
 };
 
+interface CheckboxesProps {
+    onCheckboxChange: (marks: Set<TSSMark>) => void;
+}
+type TSSMark = 'heatMapHistogram' | 'heatMapDensity' | 'sharpAngles' |
+                'lines'
+const allTSSMarks: Set<TSSMark> = new Set(['heatMapHistogram', 'heatMapDensity',
+                                            'sharpAngles', 'lines']);
+
+function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
+    let [selectedTssMarks, setSelectedTssMarks] = useState<Set<TSSMark>>(new Set(['lines']));
+    let handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, checked } = e.target;
+        let newMarkSet = new Set(selectedTssMarks);
+        if (checked) {
+            newMarkSet.add(name as TSSMark);
+        } else {
+            newMarkSet.delete(name as TSSMark);
+        }
+        setSelectedTssMarks(newMarkSet);
+    };
+    useEffect(() => {
+        onCheckboxChange(selectedTssMarks);
+    }, [selectedTssMarks]);
+    let labels = Array.from(allTSSMarks).map(markName => {
+        return (
+            <div>
+                <label htmlFor={markName}>{markName}</label>
+                <input
+                    type="checkbox"
+                    name={markName}
+                    key={markName}
+                    checked={selectedTssMarks.has(markName)}
+                    onChange={handleToggle}
+                />
+            </div>
+
+        );
+    });
+    return (
+        <div>{labels}</div>
+    );
+}
+
 interface LimitInputs {
     vMaxX: string;
     vMaxY: string;
@@ -87,7 +133,7 @@ interface LimitInputs {
     junctionSpeed: string;
 }
 
-function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) {
+function DashboardSettings({ onSelect, onLimitChange, onTSSChange }: DashboardSettingsProps) {
     const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
     });
@@ -154,6 +200,16 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
         ); 
     });
 
+    const [tssMarks, setTssMarks] = useState<Set<TSSMark>>(new Set(['lines']));
+
+    const onCheckboxChange = (marks: Set<TSSMark>) => {
+        setTssMarks(marks)
+    };
+
+    useEffect(() => {
+        onTSSChange(tssMarks);
+    }, [tssMarks])
+
     // TODO: pass the parsed (and ideally validated) kl to parent and redraw graphs
 
     return (
@@ -164,6 +220,7 @@ function DashboardSettings({ onSelect, onLimitChange }: DashboardSettingsProps) 
             <div className="klimit-inputs">
                 {inputElements}
             </div>
+            <Checkboxes onCheckboxChange={onCheckboxChange}/>
         </div>
     );
 }
@@ -183,7 +240,7 @@ let l2Norm = (v1: Vec3, v2: Vec3) => {
     return Math.sqrt(dx + dy + dz);
 }
 
-function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
+function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const findXYExtrema = (lineSegments: LineSegment[]): [number, number] => {
@@ -305,7 +362,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
                     y: (pair: [LineSegment, LineSegment]) => pair[0].end.y
                 })
             ],
-            heatMapBins: [
+            heatMapHistogram: [
                 Plot.rect(tssDatasets.weightedPoints,
                     Plot.bin({ fill: 'proportion' }, {
                         x: { value: 'x', interval: 0.1 },
@@ -331,7 +388,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
             scheme: 'viridis',
             reverse: true
           },
-          marks: tssMarks.sharpAngles.concat(tssMarks.lines)
+          marks: Array.from(selectedTSSMarks).map(name => tssMarks[name])
         });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
@@ -863,7 +920,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds, tssMarks }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -897,9 +954,13 @@ function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds }: Trajecto
             </React.Fragment>
         )} */}
         <div className="plot-title">Velocity Curve</div>
-        <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
+        <ProfilePlot lineSegments={lineSegments}
+                     selectedTSSMarks={tssMarks}
+                     filterSegmentIds={filterSegmentIds}/>
         <div className="plot-title">XY Spatial Toolpath</div>
-        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
+        <SegmentPlot lineSegments={lineSegments}
+                     selectedTSSMarks={tssMarks}
+                     filterSegmentIds={filterSegmentIds}/>
     </div>)
 };
 
@@ -1100,14 +1161,14 @@ function rasterize(svg: SVGElement) {
 }
 
 // @ts-ignore
-function downloadPlot(index: number) {
+function downloadPlot(index: number, name: string) {
     let svgs = document.getElementsByTagName('svg');
     let svg = svgs[index];
     rasterize(svg).then((raster) => {
         if (raster === null) {
             console.error('Couldn\'t download a plot.')
         } else {
-            download(raster);
+            download(raster, name);
         }
     });
 }
@@ -1133,7 +1194,8 @@ function App() {
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
     const [filterSegmentIds, setFilterSegmentIds] = useState<SegmentIdSet>("all_segments");
-    const [kinematicLimits, setKinematicLimits] = useState<KinematicLimits>(defaultLimits)
+    const [kinematicLimits, setKinematicLimits] = useState<KinematicLimits>(defaultLimits);
+    const [tssMarks, setTSSMarks] = useState<Set<TSSMark>>(new Set(['lines']));
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
@@ -1156,15 +1218,21 @@ function App() {
         }
     }
 
+    const changeTSSMarks = (newMarks: Set<TSSMark>) => {
+        setTSSMarks(newMarks);
+    };
+
     return (
         <div>
             <DashboardSettings onSelect={selectToolpath}
+                            onTSSChange={changeTSSMarks}
                             onLimitChange={setKinematicLimits}></DashboardSettings>
             <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
-              filterSegmentIds={filterSegmentIds}/>
+              filterSegmentIds={filterSegmentIds}
+              tssMarks={tssMarks}/>
               <FourierAnalysisWindow lineSegments={lineSegments}
                                      filterSegmentIds={filterSegmentIds}/>
               <InstructionWindow lineSegments={lineSegments}
