@@ -285,13 +285,16 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
             sharpAngles: [
                 Plot.dot(tssDatasets.lsPairs, {
                     r: (pair: [LineSegment, LineSegment]) => {
-                        // TODO: debug - missing certain corners
-                        // TODO: min norm? also move this preprocessing into data stuff
                         let curr = pair[0];
                         let next = pair[1];
-                        let theta = Math.acos(dot([next.unit.x, next.unit.y],
-                            [curr.unit.x, curr.unit.y]));
-                        return 2 * Math.PI - Math.abs(theta);
+                        let maxZDiff = 0.1;
+                        let maxAngle = Math.PI / 2;
+                        if (Math.abs(curr.start.z - next.start.z) > maxZDiff) {
+                            return 0;
+                        }
+                        let theta = Math.acos(dot([-curr.unit.x, -curr.unit.y],
+                            [next.unit.x, next.unit.y]));
+                        return theta <= maxAngle ? 1 : 0;
                     },
                     strokeWidth: 0,
                     fill: 'red',
@@ -1015,7 +1018,7 @@ function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindo
 }
 
 function App() {
-    const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
+    const defaultToolpath = TOOLPATH_TABLE["triangle"];
     const defaultLimits: KinematicLimits = {
         vMax: {
             x: 300,
