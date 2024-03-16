@@ -31,6 +31,10 @@
     padding-left: 10px;
 }
 
+.instruction-length {
+    font-family: monospace;
+}
+
 .instruction-list {
     list-style-type: none;
     width: fit-content;

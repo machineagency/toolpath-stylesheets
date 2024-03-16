@@ -1013,11 +1013,106 @@ function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindo
     return (
         <div className='instruction-window'>
            <div className="plot-title">Instructions</div>
-           <div>|I| = {instructions.length}, |S| = {filteredSegments.length}</div>
+           <div className='instruction-length'>
+                |I| = {instructions.length}, |S| = {filteredSegments.length}
+            </div>
            <ul className="instruction-list">{listItems}</ul>
         </div>
     );
 }
+
+function context2d(width: number, height: number, dpi: number | null) {
+    if (dpi == null) dpi = devicePixelRatio;
+    var canvas = document.createElement("canvas");
+    canvas.width = width * dpi;
+    canvas.height = height * dpi;
+    canvas.style.width = width + "px";
+    var context = canvas.getContext("2d") as CanvasRenderingContext2D;
+    context.scale(dpi, dpi);
+    return context;
+}
+
+function serialize(svg: SVGElement) {
+    const xmlns = "http://www.w3.org/2000/xmlns/";
+    const xlinkns = "http://www.w3.org/1999/xlink";
+    const svgns = "http://www.w3.org/2000/svg";
+    let svgNode = svg.cloneNode(true);
+    const fragment = window.location.href + "#";
+    const walker = document.createTreeWalker(svgNode, NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+        // @ts-ignore
+        for (const attr of walker.currentNode.attributes) {
+            if (attr.value.includes(fragment)) {
+            attr.value = attr.value.replace(fragment, "#");
+            }
+        }
+    }
+    svg.setAttributeNS(xmlns, "xmlns", svgns);
+    svg.setAttributeNS(xmlns, "xmlns:xlink", xlinkns);
+    const serializer = new window.XMLSerializer;
+    const string = serializer.serializeToString(svg);
+    return new Blob([string], {type: "image/svg+xml"});
+};
+
+function download(blob: Blob, name = 'plot.png') {
+    // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
+    const blobUrl = URL.createObjectURL(blob);
+  
+    // Create a link element
+    const link = document.createElement("a");
+  
+    // Set link's href to point to the Blob URL
+    link.href = blobUrl;
+    link.download = name;
+  
+    // Append link to the body
+    document.body.appendChild(link);
+  
+    // Dispatch click event on the link
+    // This is necessary as link.click() does not work on the latest firefox
+    link.dispatchEvent(
+      new MouseEvent('click', { 
+        bubbles: true, 
+        cancelable: true, 
+        view: window 
+      })
+    );
+  
+    // Remove link from body
+    document.body.removeChild(link);
+  }
+  
+
+function rasterize(svg: SVGElement) {
+    return new Promise<Blob | null>((resolve, reject) => {
+        const image = new Image;
+        image.onerror = reject;
+        image.onload = () => {
+            const rect = svg.getBoundingClientRect();
+            const context = context2d(rect.width, rect.height, null);
+            context.drawImage(image, 0, 0, rect.width, rect.height);
+            context.canvas.toBlob((blob) => {
+                resolve(blob);
+            });
+        };
+        image.src = URL.createObjectURL(serialize(svg));
+    });
+}
+
+// @ts-ignore
+function downloadPlot(index: number) {
+    let svgs = document.getElementsByTagName('svg');
+    let svg = svgs[index];
+    rasterize(svg).then((raster) => {
+        if (raster === null) {
+            console.error('Couldn\'t download a plot.')
+        } else {
+            download(raster);
+        }
+    });
+}
+
+(window as any).downloadPlot = downloadPlot;
 
 function App() {
     const defaultToolpath = TOOLPATH_TABLE["triangle"];
