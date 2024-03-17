@@ -384,11 +384,12 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                 )
             },
             heatMapDensity: () => {
+                let maxHeight = 0;
                 return Plot.density(tssDatasets.weightedPoints(), {
                     x: 'x',
                     y: 'y',
-                    weight: (pt) => pt.z <= 0 ? Math.log10(pt.weight) : 0,
-                    bandwidth: 5,
+                    weight: (pt) => pt.z <= maxHeight ? pt.weight : 0,
+                    bandwidth: 3,
                     fill: 'density'
                 })
             }
@@ -409,7 +410,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
           },
           marks: [
             Plot.frame(),
-            ...Array.from(selectedTSSMarks).map(name => tssMarks[name]())
+            ...Array.from(selectedTSSMarks).map(name => tssMarks[name]()),
           ]
         });
         if (containerRef.current) {
