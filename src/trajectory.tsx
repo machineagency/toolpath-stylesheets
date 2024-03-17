@@ -387,8 +387,14 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             }
         };
         const xyPlot = Plot.plot({
-          x: { domain: extrema },
-          y: { domain: extrema },
+          x: {
+            domain: extrema,
+            label: 'x position'
+          },
+          y: {
+            domain: extrema,
+            label: 'y position'
+          },
           inset: 10,
           color: {
             scheme: 'viridis',
@@ -450,7 +456,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
             },
             y: {
               grid: true,
-              label: "mm / s ( / s)"
+              label: "unit"
             },
             color: { legend: true },
             marks: [
@@ -503,7 +509,14 @@ function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const zPlot = Plot.plot({
-          grid: true,
+          x: {
+            grid: true,
+            label: 'segment'
+          },
+          y: {
+            grid: true,
+            label: 'z position'
+          },
           marks: [
             Plot.line(lineSegments.flatMap((segment) => {
                 let startPlusId = {...segment.start, id: segment.parent};
@@ -1038,23 +1051,25 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
         let filteredSignal = signal;
         let analysis = calculateAnalysis(filteredSignal, 100);
         const plot = Plot.plot({
-           marks: [
-            // TODO: bin to integer frequencies?
-            Plot.line(analysis.frequencies, {
-                x: (freq: number) => freq,
-                y: (_, i: number) => analysis.magnitudes[i],
-                strokeWidth: 0.5
-            }),
-            Plot.areaY(analysis.frequencies, {
-                x: (freq: number) => freq,
-                y: (_, i: number) => analysis.magnitudes[i],
-                fillOpacity: 0.3
-            }),
-            Plot.crosshair(analysis.frequencies, {
-                x: (freq: number) => freq,
-                y: (_, i: number) => analysis.magnitudes[i],
-            })
-           ]
+            x: { label: 'frequency' },
+            y: { label: 'magnitude' },
+            marks: [
+             // TODO: bin to integer frequencies?
+             Plot.line(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+                 strokeWidth: 0.5
+             }),
+             Plot.areaY(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+                 fillOpacity: 0.3
+             }),
+             Plot.crosshair(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+             })
+            ]
         });
         if (containerRef.current) {
             containerRef.current.append(plot);
