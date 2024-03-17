@@ -324,8 +324,8 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             }).filter(el => el !== null)
         };
         let tssMarks = {
-            lines: [
-                Plot.line(tssDatasets.discreteLines, {
+            lines: () => {
+                return Plot.line(tssDatasets.discreteLines, {
                     x: (d: Vec3 | null) => {
                         if (d === null) {
                             return null;
@@ -340,9 +340,9 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                     },
                     strokeWidth: 0.5
                 })
-            ],
-            sharpAngles: [
-                Plot.dot(tssDatasets.lsPairs, {
+            },
+            sharpAngles: () => {
+                return Plot.dot(tssDatasets.lsPairs, {
                     r: (pair: [LineSegment, LineSegment]) => {
                         let curr = pair[0];
                         let next = pair[1];
@@ -361,24 +361,24 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                     x: (pair: [LineSegment, LineSegment]) => pair[0].end.x,
                     y: (pair: [LineSegment, LineSegment]) => pair[0].end.y
                 })
-            ],
-            heatMapHistogram: [
-                Plot.rect(tssDatasets.weightedPoints,
+            },
+            heatMapHistogram: () => {
+                return Plot.rect(tssDatasets.weightedPoints,
                     Plot.bin({ fill: 'proportion' }, {
                         x: { value: 'x', interval: 0.1 },
                         y: { value: 'y', interval: 0.1 }
                     })
                 )
-            ],
-            heatMapDensity: [
-                Plot.density(tssDatasets.weightedPoints, {
+            },
+            heatMapDensity: () => {
+                return Plot.density(tssDatasets.weightedPoints, {
                     x: 'x',
                     y: 'y',
                     weight: (pt) => pt.z <= 0 ? Math.log10(pt.weight) : 0,
                     bandwidth: 5,
                     fill: 'density'
                 })
-            ]
+            }
         };
         const xyPlot = Plot.plot({
           x: { domain: extrema },
@@ -388,7 +388,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             scheme: 'viridis',
             reverse: true
           },
-          marks: Array.from(selectedTSSMarks).map(name => tssMarks[name])
+          marks: Array.from(selectedTSSMarks).map(name => tssMarks[name]())
         });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
