@@ -104,7 +104,7 @@ function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
     }, [selectedTssMarks]);
     let labels = Array.from(allTSSMarks).map(markName => {
         return (
-            <div>
+            <div key={'div-' + markName}>
                 <label key={'label-' + markName} htmlFor={markName}>{markName}</label>
                 <input
                     type="checkbox"
@@ -271,61 +271,67 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             return filterSegmentIds.has(ls.parent);
         });
         let tssDatasets = {
-            weightedPoints: filteredSegments.flatMap((segment, idx, arr) => {
-                if (filteredSegments.length < windowSize) {
+            weightedPoints: () => {
+                return filteredSegments.flatMap((segment, idx, arr) => {
+                    if (filteredSegments.length < windowSize) {
+                        return {
+                            id: segment.parent,
+                            x: segment.start.x,
+                            y: segment.start.y,
+                            z: segment.start.z,
+                            weight: 1
+                        };
+                    }
+                    let windowLower = Math.max(0, idx - windowSize);
+                    let windowUpper = Math.min(arr.length - 1, idx + windowSize);
+                    let window = arr.slice(windowLower, windowUpper);
+                    let windowCenter = window[windowCenterIdx];
+                    let weightedDistanceResiduals = window.map((ls, idx, arr) => {
+                        if (idx === windowCenterIdx) {
+                            return 0;
+                        }
+                        let distance = l2Norm(ls.start, windowCenter.start);
+                        let subWindow = idx <= windowCenterIdx
+                                            ? arr.slice(idx, windowCenterIdx)
+                                            : arr.slice(windowCenterIdx + 1, idx);
+                        let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
+                            return timeSoFar + currLs.profile.t;
+                        }, 0);
+                        return cost(distance, timeDiff);
+                    });
                     return {
                         id: segment.parent,
                         x: segment.start.x,
                         y: segment.start.y,
                         z: segment.start.z,
-                        weight: 1
+                        weight: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
                     };
-                }
-                let windowLower = Math.max(0, idx - windowSize);
-                let windowUpper = Math.min(arr.length - 1, idx + windowSize);
-                let window = arr.slice(windowLower, windowUpper);
-                let windowCenter = window[windowCenterIdx];
-                let weightedDistanceResiduals = window.map((ls, idx, arr) => {
-                    if (idx === windowCenterIdx) {
-                        return 0;
-                    }
-                    let distance = l2Norm(ls.start, windowCenter.start);
-                    let subWindow = idx <= windowCenterIdx
-                                        ? arr.slice(idx, windowCenterIdx)
-                                        : arr.slice(windowCenterIdx + 1, idx);
-                    let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
-                        return timeSoFar + currLs.profile.t;
-                    }, 0);
-                    return cost(distance, timeDiff);
                 });
-                return {
-                    id: segment.parent,
-                    x: segment.start.x,
-                    y: segment.start.y,
-                    z: segment.start.z,
-                    weight: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
-                };
-            }),
-            discreteLines: filteredSegments.flatMap((segment) => {
-                let startPlusId = {...segment.start, id: segment.parent};
-                let endPlusId = {...segment.end, id: segment.parent};
-                return [startPlusId, endPlusId, null]
-            }),
-            lsPairs: filteredSegments.map((_, i, arr) => {
-                if (i === arr.length - 1) {
-                    return null;
-                }
-                let curr = arr[i];
-                let next = arr[i + 1];
-                if (curr.start.z < 0 && next.start.z < 0) {
-                    return null;
-                }
-                return [curr, next];
-            }).filter(el => el !== null)
+            },
+            discreteLines: () => {
+                return filteredSegments.flatMap((segment) => {
+                    let startPlusId = {...segment.start, id: segment.parent};
+                    let endPlusId = {...segment.end, id: segment.parent};
+                    return [startPlusId, endPlusId, null]
+                });
+            },
+            lsPairs: () => {
+                return filteredSegments.map((_, i, arr) => {
+                    if (i === arr.length - 1) {
+                        return null;
+                    }
+                    let curr = arr[i];
+                    let next = arr[i + 1];
+                    if (curr.start.z < 0 && next.start.z < 0) {
+                        return null;
+                    }
+                    return [curr, next];
+                }).filter(el => el !== null);
+            }
         };
         let tssMarks = {
             lines: () => {
-                return Plot.line(tssDatasets.discreteLines, {
+                return Plot.line(tssDatasets.discreteLines(), {
                     x: (d: Vec3 | null) => {
                         if (d === null) {
                             return null;
@@ -342,7 +348,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                 })
             },
             sharpAngles: () => {
-                return Plot.dot(tssDatasets.lsPairs, {
+                return Plot.dot(tssDatasets.lsPairs(), {
                     r: (pair: [LineSegment, LineSegment]) => {
                         let curr = pair[0];
                         let next = pair[1];
@@ -363,7 +369,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                 })
             },
             heatMapHistogram: () => {
-                return Plot.rect(tssDatasets.weightedPoints,
+                return Plot.rect(tssDatasets.weightedPoints(),
                     Plot.bin({ fill: 'proportion' }, {
                         x: { value: 'x', interval: 0.1 },
                         y: { value: 'y', interval: 0.1 }
@@ -371,7 +377,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                 )
             },
             heatMapDensity: () => {
-                return Plot.density(tssDatasets.weightedPoints, {
+                return Plot.density(tssDatasets.weightedPoints(), {
                     x: 'x',
                     y: 'y',
                     weight: (pt) => pt.z <= 0 ? Math.log10(pt.weight) : 0,
@@ -446,6 +452,7 @@ function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
               grid: true,
               label: "mm / s ( / s)"
             },
+            color: { legend: true },
             marks: [
               Plot.line(cumulativeTimes, {
                 x: (_, i: number) => cumulativeTimes[i],
@@ -1033,10 +1040,15 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
         const plot = Plot.plot({
            marks: [
             // TODO: bin to integer frequencies?
-            Plot.dot(analysis.frequencies, {
+            Plot.line(analysis.frequencies, {
                 x: (freq: number) => freq,
                 y: (_, i: number) => analysis.magnitudes[i],
-                r: 1
+                strokeWidth: 0.5
+            }),
+            Plot.areaY(analysis.frequencies, {
+                x: (freq: number) => freq,
+                y: (_, i: number) => analysis.magnitudes[i],
+                fillOpacity: 0.3
             }),
             Plot.crosshair(analysis.frequencies, {
                 x: (freq: number) => freq,
@@ -1051,7 +1063,7 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
     }, [lineSegments, filterSegmentIds]);
     return (
         <div ref={containerRef}>
-            <div className="plot-title">Fourier Analysis</div>
+            <div className="plot-title">Spectral Analysis</div>
         </div>
     );
 }
