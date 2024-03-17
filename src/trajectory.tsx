@@ -356,7 +356,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             },
             sharpAngles: () => {
                 return Plot.dot(tssDatasets.lsPairs(), {
-                    r: (pair: [LineSegment, LineSegment]) => {
+                    filter: (pair: [LineSegment, LineSegment]) => {
                         let curr = pair[0];
                         let next = pair[1];
                         let maxZDiff = 0.1;
@@ -366,11 +366,12 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                         }
                         let theta = Math.acos(dot([-curr.unit.x, -curr.unit.y],
                             [next.unit.x, next.unit.y]));
-                        return theta <= maxAngle ? 1 : 0;
+                        return theta <= maxAngle;
                     },
+                    r: 5,
                     strokeWidth: 0,
                     fill: 'red',
-                    opacity: 0.5,
+                    opacity: 0.8,
                     x: (pair: [LineSegment, LineSegment]) => pair[0].end.x,
                     y: (pair: [LineSegment, LineSegment]) => pair[0].end.y
                 })
