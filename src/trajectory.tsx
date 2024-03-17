@@ -1247,7 +1247,15 @@ function App() {
             setFilterSegmentIds('all_segments');
             setLineSegments(fullyPlanned);
         }
-    }, [currentToolpath, kinematicLimits]);
+    }, [currentToolpath]);
+
+    useEffect(() => {
+        if (currentToolpath !== null) {
+            let { fullyPlanned } = computeLineSegments(currentToolpath, kinematicLimits);
+            setLineSegments(fullyPlanned);
+        }
+    }, [kinematicLimits]);
+
 
     const handleSegmentRefilter = (selectIds: SegmentIdSet) => {
         if (selectIds === null) {
