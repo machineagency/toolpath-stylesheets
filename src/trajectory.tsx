@@ -333,7 +333,21 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                         return null;
                     }
                     return [curr, next];
-                }).filter(el => el !== null);
+                }).filter(pair => {
+                    if (pair === null) {
+                        return false;
+                    }
+                    let curr = pair[0];
+                    let next = pair[1];
+                    let maxZDiff = 0.1;
+                    let maxAngle = Math.PI / 2;
+                    if (Math.abs(curr.start.z - next.start.z) > maxZDiff) {
+                        return 0;
+                    }
+                    let theta = Math.acos(dot([-curr.unit.x, -curr.unit.y],
+                        [next.unit.x, next.unit.y]));
+                    return theta <= maxAngle;
+                })
             }
         };
         let tssMarks = {
@@ -356,18 +370,6 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             },
             sharpAngles: () => {
                 return Plot.dot(tssDatasets.lsPairs(), {
-                    filter: (pair: [LineSegment, LineSegment]) => {
-                        let curr = pair[0];
-                        let next = pair[1];
-                        let maxZDiff = 0.1;
-                        let maxAngle = Math.PI / 2;
-                        if (Math.abs(curr.start.z - next.start.z) > maxZDiff) {
-                            return 0;
-                        }
-                        let theta = Math.acos(dot([-curr.unit.x, -curr.unit.y],
-                            [next.unit.x, next.unit.y]));
-                        return theta <= maxAngle;
-                    },
                     r: 5,
                     strokeWidth: 0,
                     fill: 'red',
