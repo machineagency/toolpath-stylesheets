@@ -145,14 +145,14 @@ function DashboardSettings({ onSelect, onLimitChange, onTSSChange }: DashboardSe
         return <option value={tpName} key={tpName}>{tpName}</option>
     });
     const defaultKLInputs: LimitInputs = {
-        vMaxX: '300.0',
-        vMaxY: '300.0',
-        vMaxZ: '150.0',
-        aMaxX: '50.0',
-        aMaxY: '50.0',
-        aMaxZ: '25.0',
+        vMaxX: '3.7',
+        vMaxY: '3.7',
+        vMaxZ: '2.0',
+        aMaxX: '1.8',
+        aMaxY: '1.8',
+        aMaxZ: '1.0',
         junctionDeviation: '0.001',
-        junctionSpeed: '0.01'
+        junctionSpeed: '0.1'
     };
     const parseLimitInputs = (inputs: LimitInputs): KinematicLimits | null => {
         let validate = (kl: KinematicLimits) => {
@@ -407,7 +407,10 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
             scheme: 'viridis',
             reverse: true
           },
-          marks: Array.from(selectedTSSMarks).map(name => tssMarks[name]())
+          marks: [
+            Plot.frame(),
+            ...Array.from(selectedTSSMarks).map(name => tssMarks[name]())
+          ]
         });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
