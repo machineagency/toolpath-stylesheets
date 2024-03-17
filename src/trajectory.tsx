@@ -105,11 +105,11 @@ function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
     let labels = Array.from(allTSSMarks).map(markName => {
         return (
             <div>
-                <label htmlFor={markName}>{markName}</label>
+                <label key={'label-' + markName} htmlFor={markName}>{markName}</label>
                 <input
                     type="checkbox"
                     name={markName}
-                    key={markName}
+                    key={'input-' + markName}
                     checked={selectedTssMarks.has(markName)}
                     onChange={handleToggle}
                 />
@@ -396,7 +396,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
         return () => {
             xyPlot.remove();
         };
-      }, [lineSegments, filterSegmentIds]);
+      }, [lineSegments, selectedTSSMarks, filterSegmentIds]);
 
     return <div className="flex" ref={containerRef}/>;
 }
