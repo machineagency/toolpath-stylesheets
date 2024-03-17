@@ -498,14 +498,14 @@ function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
 
 interface DepthHistogramProps {
     lineSegments: LineSegment[];
-    onBinSelect: (setIds: Set<number> | AllSegments) => void;
+    onSegmentRefilter: (setIds: Set<number> | AllSegments) => void;
 }
 
 interface LineSegmentWithId extends LineSegment {
     id: number;
 }
 
-function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
+function DepthHistogram({ lineSegments, onSegmentRefilter: onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const zPlot = Plot.plot({
@@ -1040,6 +1040,7 @@ function calculateAnalysis(signal: number[], sampleRate: number): FourierAnalysi
     return { frequencies: freqBins, magnitudes: magnitudes };
 }
 
+// @ts-ignore
 function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
                                     FourierAnalysisWindowProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1232,11 +1233,12 @@ function App() {
     useEffect(() => {
         if (currentToolpath !== null) {
             let { fullyPlanned } = computeLineSegments(currentToolpath, kinematicLimits);
+            setFilterSegmentIds('all_segments');
             setLineSegments(fullyPlanned);
         }
     }, [currentToolpath, kinematicLimits]);
 
-    const handleBinSelect = (selectIds: SegmentIdSet) => {
+    const handleSegmentRefilter = (selectIds: SegmentIdSet) => {
         if (selectIds === null) {
             setFilterSegmentIds('all_segments');
         }
@@ -1254,14 +1256,15 @@ function App() {
             <DashboardSettings onSelect={selectToolpath}
                             onTSSChange={changeTSSMarks}
                             onLimitChange={setKinematicLimits}></DashboardSettings>
-            <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
+            <DepthHistogram lineSegments={lineSegments}
+                            onSegmentRefilter={handleSegmentRefilter}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
               filterSegmentIds={filterSegmentIds}
               tssMarks={tssMarks}/>
-              <FourierAnalysisWindow lineSegments={lineSegments}
-                                     filterSegmentIds={filterSegmentIds}/>
+              {/* <FourierAnalysisWindow lineSegments={lineSegments}
+                                     filterSegmentIds={filterSegmentIds}/> */}
               <InstructionWindow lineSegments={lineSegments}
                                      filterSegmentIds={filterSegmentIds}/>
         </div>
