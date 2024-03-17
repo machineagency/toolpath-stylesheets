@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import {useEffect, useRef} from "react";
-import { norm, number, dot } from "mathjs";
+import { norm, number, dot, isNaN } from "mathjs";
 import { IR, Instruction } from './type-utils';
 import { lowerEBB, lowerGCode, lowerSBP } from './ir';
 import { toolpath, Toolpath } from './type-utils';
@@ -21,15 +21,19 @@ type SegmentIdSet = Set<number> | AllSegments;
 interface TrajectoryWindowProps {
     toolpath: Toolpath | null;
     lineSegments: LineSegment[];
+    tssMarks: Set<TSSMark>;
     filterSegmentIds: SegmentIdSet;
 }
 
 interface DashboardSettingsProps {
     onSelect: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+    onLimitChange: (newLimits: KinematicLimits) => void;
+    onTSSChange: (marks: Set<TSSMark>) => void;
 }
 
 interface PlotProps {
     lineSegments: LineSegment[];
+    selectedTSSMarks: Set<TSSMark>;
     filterSegmentIds: Set<number> | AllSegments;
 }
 
@@ -55,19 +59,15 @@ interface TextInputProps {
 }
 
 const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
-    const [error, setError] = useState('');
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.trim();
         if (/^\d*\.?\d*$/.test(value)) {
-            setError('');
             onValueChange(value);
-        } else {
-            setError('Please enter a valid number');
-        }
+        } 
     };
   
     return (
-        <div>
+        <div className="text-input">
           <label>{label}</label>
           <input
             type="text"
@@ -75,10 +75,52 @@ const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
             onChange={handleInputChange}
             placeholder={`Enter ${label}`}
         />
-        {error && <div style={{ color: 'red' }}>{error}</div>}
       </div>
     );
 };
+
+interface CheckboxesProps {
+    onCheckboxChange: (marks: Set<TSSMark>) => void;
+}
+type TSSMark = 'heatMapHistogram' | 'heatMapDensity' | 'sharpAngles' |
+                'lines'
+const allTSSMarks: Set<TSSMark> = new Set(['heatMapHistogram', 'heatMapDensity',
+                                            'sharpAngles', 'lines']);
+
+function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
+    let [selectedTssMarks, setSelectedTssMarks] = useState<Set<TSSMark>>(new Set(['lines']));
+    let handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let { name, checked } = e.target;
+        let newMarkSet = new Set(selectedTssMarks);
+        if (checked) {
+            newMarkSet.add(name as TSSMark);
+        } else {
+            newMarkSet.delete(name as TSSMark);
+        }
+        setSelectedTssMarks(newMarkSet);
+    };
+    useEffect(() => {
+        onCheckboxChange(selectedTssMarks);
+    }, [selectedTssMarks]);
+    let labels = Array.from(allTSSMarks).map(markName => {
+        return (
+            <div key={'div-' + markName}>
+                <label key={'label-' + markName} htmlFor={markName}>{markName}</label>
+                <input
+                    type="checkbox"
+                    name={markName}
+                    key={'input-' + markName}
+                    checked={selectedTssMarks.has(markName)}
+                    onChange={handleToggle}
+                />
+            </div>
+
+        );
+    });
+    return (
+        <div>{labels}</div>
+    );
+}
 
 interface LimitInputs {
     vMaxX: string;
@@ -91,23 +133,27 @@ interface LimitInputs {
     junctionSpeed: string;
 }
 
-function DashboardSettings({ onSelect }: DashboardSettingsProps) {
+function DashboardSettings({ onSelect, onLimitChange, onTSSChange }: DashboardSettingsProps) {
     const toolpathsOptionElements = Object.keys(TOOLPATH_TABLE).map(tpName => {
         return <option value={tpName} key={tpName}>{tpName}</option>
     });
     const defaultKLInputs: LimitInputs = {
-        vMaxX: '1',
-        vMaxY: '1',
-        vMaxZ: '1',
-        aMaxX: '1',
-        aMaxY: '1',
-        aMaxZ: '1',
-        junctionDeviation: '1',
-        junctionSpeed: '1'
+        vMaxX: '300.0',
+        vMaxY: '300.0',
+        vMaxZ: '150.0',
+        aMaxX: '50.0',
+        aMaxY: '50.0',
+        aMaxZ: '25.0',
+        junctionDeviation: '0.001',
+        junctionSpeed: '0.01'
     };
-    const parseLimitInputs = (inputs: LimitInputs): KinematicLimits => {
-        // TODO: deal with NaNs systematically
-        return {
+    const parseLimitInputs = (inputs: LimitInputs): KinematicLimits | null => {
+        let validate = (kl: KinematicLimits) => {
+            return !(isNaN(kl.vMax.x) || isNaN(kl.vMax.y) || isNaN(kl.vMax.z)
+                || isNaN(kl.aMax.x) || isNaN(kl.aMax.y) || isNaN(kl.aMax.z)
+                || isNaN(kl.junctionDeviation) || isNaN(kl.junctionSpeed));
+        };
+        let kl = {
             vMax: {
                 x: parseFloat(inputs.vMaxX),
                 y: parseFloat(inputs.vMaxY),
@@ -121,76 +167,80 @@ function DashboardSettings({ onSelect }: DashboardSettingsProps) {
             junctionDeviation: parseFloat(inputs.junctionDeviation),
             junctionSpeed: parseFloat(inputs.junctionSpeed)
         };
+        if (validate(kl)) {
+            return kl;
+        }
+        return null;
     };
     const [limitInputs, setLimitInputs] = useState<LimitInputs>(defaultKLInputs);
 
     const handleValueChange = (key: keyof LimitInputs, newValue: string) => {
-      setLimitInputs({
-        ...limitInputs,
-        [key]: newValue,
-      });
+        setLimitInputs({
+          ...limitInputs,
+          [key]: newValue,
+        });
     };
 
+    useEffect(() => {
+        let kl = parseLimitInputs(limitInputs);
+        if (kl !== null) {
+            onLimitChange(kl);
+        }
+    }, [limitInputs])
+
+    let inputElements = Object.keys(limitInputs).map(key => {
+        return (
+           <TextInput
+                label={key}
+                key={key}
+                value={limitInputs[key as keyof LimitInputs]}
+                onValueChange={(newValue) => handleValueChange(
+                                    key as keyof LimitInputs, newValue)}
+            />
+        ); 
+    });
+
+    const [tssMarks, setTssMarks] = useState<Set<TSSMark>>(new Set(['lines']));
+
+    const onCheckboxChange = (marks: Set<TSSMark>) => {
+        setTssMarks(marks)
+    };
+
+    useEffect(() => {
+        onTSSChange(tssMarks);
+    }, [tssMarks])
+
     // TODO: pass the parsed (and ideally validated) kl to parent and redraw graphs
-    let kl = parseLimitInputs(limitInputs);
 
     return (
         <div className="dashboard-settings">
             <select onChange={onSelect} name="toolpath-select" id="toolpath-select">
                 {toolpathsOptionElements}
             </select>
-            <TextInput
-                label="Max Velocity (X)"
-                value={limitInputs.vMaxX}
-                onValueChange={(newValue) => handleValueChange('vMaxX', newValue)}
-            />
-            <TextInput
-                label="Max Velocity (Y)"
-                value={limitInputs.vMaxY}
-                onValueChange={(newValue) => handleValueChange('vMaxY', newValue)}
-            />
-            <TextInput
-                label="Max Velocity (Z)"
-                value={limitInputs.vMaxZ}
-                onValueChange={(newValue) => handleValueChange('vMaxZ', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (X)"
-                value={limitInputs.aMaxX}
-                onValueChange={(newValue) => handleValueChange('aMaxX', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (Y)"
-                value={limitInputs.aMaxY}
-                onValueChange={(newValue) => handleValueChange('aMaxY', newValue)}
-            />
-            <TextInput
-                label="Max Acceleration (Z)"
-                value={limitInputs.aMaxZ}
-                onValueChange={(newValue) => handleValueChange('aMaxZ', newValue)}
-            />
-            <TextInput
-                label="Junction Deviation"
-                value={limitInputs.junctionDeviation}
-                onValueChange={(newValue) => handleValueChange('junctionDeviation', newValue)}
-            />
-            <TextInput
-                label="Junction Speed"
-                value={limitInputs.junctionSpeed}
-                onValueChange={(newValue) => handleValueChange('junctionSpeed', newValue)}
-            />
+            <div className="klimit-inputs">
+                {inputElements}
+            </div>
+            <Checkboxes onCheckboxChange={onCheckboxChange}/>
         </div>
     );
 }
 
-interface Vec3WithId {
-    x: number;
-    y: number;
-    z: number;
-    id: number;
+// @ts-ignore
+let l1Norm = (v1: Vec3, v2: Vec3) => {
+    let dx = Math.abs(v1.x - v2.x);
+    let dy = Math.abs(v1.y - v2.y);
+    let dz = Math.abs(v1.z - v2.z);
+    return dx + dy + dz;
 }
 
-function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
+let l2Norm = (v1: Vec3, v2: Vec3) => {
+    let dx = (v1.x - v2.x) ** 2;
+    let dy = (v1.y - v2.y) ** 2;
+    let dz = Math.abs(v1.z - v2.z);
+    return Math.sqrt(dx + dy + dz);
+}
+
+function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
     const findXYExtrema = (lineSegments: LineSegment[]): [number, number] => {
@@ -202,41 +252,155 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
     useEffect(() => {
         if (lineSegments === undefined) return;
         let extrema = findXYExtrema(lineSegments);
+        let windowSize = 7;
+        let windowCenterIdx = Math.floor(windowSize / 2);
+        let cost = (distance: number, timeDiff: number) => {
+            if (distance === 0 || timeDiff === 0) {
+                // It seems we hit this case every time, so just ignore it
+                // By returning 0 until we understand what's going on.
+                return 0;
+            }
+            return Math.max(0,
+                Math.log((1 / distance) / timeDiff)
+            );
+        };
+        let filteredSegments = lineSegments.filter((ls) => {
+            if (filterSegmentIds === 'all_segments') {
+                return true;
+            }
+            return filterSegmentIds.has(ls.parent);
+        });
+        let tssDatasets = {
+            weightedPoints: () => {
+                return filteredSegments.flatMap((segment, idx, arr) => {
+                    if (filteredSegments.length < windowSize) {
+                        return {
+                            id: segment.parent,
+                            x: segment.start.x,
+                            y: segment.start.y,
+                            z: segment.start.z,
+                            weight: 1
+                        };
+                    }
+                    let windowLower = Math.max(0, idx - windowSize);
+                    let windowUpper = Math.min(arr.length - 1, idx + windowSize);
+                    let window = arr.slice(windowLower, windowUpper);
+                    let windowCenter = window[windowCenterIdx];
+                    let weightedDistanceResiduals = window.map((ls, idx, arr) => {
+                        if (idx === windowCenterIdx) {
+                            return 0;
+                        }
+                        let distance = l2Norm(ls.start, windowCenter.start);
+                        let subWindow = idx <= windowCenterIdx
+                                            ? arr.slice(idx, windowCenterIdx)
+                                            : arr.slice(windowCenterIdx + 1, idx);
+                        let timeDiff = subWindow.reduce((timeSoFar, currLs) => {
+                            return timeSoFar + currLs.profile.t;
+                        }, 0);
+                        return cost(distance, timeDiff);
+                    });
+                    return {
+                        id: segment.parent,
+                        x: segment.start.x,
+                        y: segment.start.y,
+                        z: segment.start.z,
+                        weight: weightedDistanceResiduals.reduce((soFar, curr) => soFar + curr, 0)
+                    };
+                });
+            },
+            discreteLines: () => {
+                return filteredSegments.flatMap((segment) => {
+                    let startPlusId = {...segment.start, id: segment.parent};
+                    let endPlusId = {...segment.end, id: segment.parent};
+                    return [startPlusId, endPlusId, null]
+                });
+            },
+            lsPairs: () => {
+                return filteredSegments.map((_, i, arr) => {
+                    if (i === arr.length - 1) {
+                        return null;
+                    }
+                    let curr = arr[i];
+                    let next = arr[i + 1];
+                    if (curr.start.z < 0 && next.start.z < 0) {
+                        return null;
+                    }
+                    return [curr, next];
+                }).filter(el => el !== null);
+            }
+        };
+        let tssMarks = {
+            lines: () => {
+                return Plot.line(tssDatasets.discreteLines(), {
+                    x: (d: Vec3 | null) => {
+                        if (d === null) {
+                            return null;
+                        }
+                        return d.x;
+                    },
+                    y: (d: Vec3 | null) => {
+                        if (d === null) {
+                            return null;
+                        }
+                        return d.y;
+                    },
+                    strokeWidth: 0.5
+                })
+            },
+            sharpAngles: () => {
+                return Plot.dot(tssDatasets.lsPairs(), {
+                    r: (pair: [LineSegment, LineSegment]) => {
+                        let curr = pair[0];
+                        let next = pair[1];
+                        let maxZDiff = 0.1;
+                        let maxAngle = Math.PI / 2;
+                        if (Math.abs(curr.start.z - next.start.z) > maxZDiff) {
+                            return 0;
+                        }
+                        let theta = Math.acos(dot([-curr.unit.x, -curr.unit.y],
+                            [next.unit.x, next.unit.y]));
+                        return theta <= maxAngle ? 1 : 0;
+                    },
+                    strokeWidth: 0,
+                    fill: 'red',
+                    opacity: 0.5,
+                    x: (pair: [LineSegment, LineSegment]) => pair[0].end.x,
+                    y: (pair: [LineSegment, LineSegment]) => pair[0].end.y
+                })
+            },
+            heatMapHistogram: () => {
+                return Plot.rect(tssDatasets.weightedPoints(),
+                    Plot.bin({ fill: 'proportion' }, {
+                        x: { value: 'x', interval: 0.1 },
+                        y: { value: 'y', interval: 0.1 }
+                    })
+                )
+            },
+            heatMapDensity: () => {
+                return Plot.density(tssDatasets.weightedPoints(), {
+                    x: 'x',
+                    y: 'y',
+                    weight: (pt) => pt.z <= 0 ? Math.log10(pt.weight) : 0,
+                    bandwidth: 5,
+                    fill: 'density'
+                })
+            }
+        };
         const xyPlot = Plot.plot({
-          grid: true,
           x: {
-            domain: extrema
+            domain: extrema,
+            label: 'x position'
           },
           y: {
-            domain: extrema
+            domain: extrema,
+            label: 'y position'
           },
-          marks: [
-            Plot.line(lineSegments.flatMap((segment) => {
-                let startPlusId = {...segment.start, id: segment.parent};
-                let endPlusId = {...segment.end, id: segment.parent};
-                return [startPlusId, endPlusId, null]
-            }), {
-                filter: (point: Vec3WithId | null) => {
-                    if (point === null || filterSegmentIds === 'all_segments') {
-                        return true;
-                    } else {
-                        return filterSegmentIds.has(point.id);
-                    }
-                },
-                x: (d: Vec3 | null) => {
-                    if (d === null) {
-                        return null;
-                    }
-                    return d.x;
-                },
-                y: (d: Vec3 | null) => {
-                    if (d === null) {
-                        return null;
-                    }
-                    return d.y;
-                }
-            })
-          ]
+          inset: 10,
+          color: {
+            scheme: 'viridis',
+            reverse: true
+          },
+          marks: Array.from(selectedTSSMarks).map(name => tssMarks[name]())
         });
         if (containerRef.current) {
             containerRef.current.append(xyPlot);
@@ -244,7 +408,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds }: PlotProps) {
         return () => {
             xyPlot.remove();
         };
-      }, [lineSegments, filterSegmentIds]);
+      }, [lineSegments, selectedTSSMarks, filterSegmentIds]);
 
     return <div className="flex" ref={containerRef}/>;
 }
@@ -292,8 +456,9 @@ function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
             },
             y: {
               grid: true,
-              label: "mm / s ( / s)"
+              label: "unit"
             },
+            color: { legend: true },
             marks: [
               Plot.line(cumulativeTimes, {
                 x: (_, i: number) => cumulativeTimes[i],
@@ -333,18 +498,25 @@ function ProfilePlot({ lineSegments, filterSegmentIds }: PlotProps) {
 
 interface DepthHistogramProps {
     lineSegments: LineSegment[];
-    onBinSelect: (setIds: Set<number> | AllSegments) => void;
+    onSegmentRefilter: (setIds: Set<number> | AllSegments) => void;
 }
 
 interface LineSegmentWithId extends LineSegment {
     id: number;
 }
 
-function DepthHistogram({ lineSegments, onBinSelect }: DepthHistogramProps) {
+function DepthHistogram({ lineSegments, onSegmentRefilter: onBinSelect }: DepthHistogramProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const zPlot = Plot.plot({
-          grid: true,
+          x: {
+            grid: true,
+            label: 'segment'
+          },
+          y: {
+            grid: true,
+            label: 'z position'
+          },
           marks: [
             Plot.line(lineSegments.flatMap((segment) => {
                 let startPlusId = {...segment.start, id: segment.parent};
@@ -474,16 +646,6 @@ function lineSegment(instruction: Instruction, parent: number, start: Vec3, end:
     }
 }
 
-function kinematicLimits(maxVelocity: Vec3, maxAcceleration: Vec3,
-         junctionSpeed: number, junctionDeviation: number): KinematicLimits {
-    return {
-        vMax: maxVelocity,
-        aMax: maxAcceleration,
-        junctionSpeed: junctionSpeed,
-        junctionDeviation: junctionDeviation
-    }
-}
-
 function firstOrder(initialVelocity: number, finalVelocity: number, acceleration: number,
          timeDuration: number, length: number): FirstOrder {
     return {
@@ -577,7 +739,7 @@ function normalize(v0: number | null, v: number | null, a: number | null,
     return firstOrder(v0!, v, a!, time, time * (v0! + v) / 2);
 }
 
-function computeLineSegments(tp: Toolpath): TrajectoryPasses {
+function computeLineSegments(tp: Toolpath, kl: KinematicLimits): TrajectoryPasses {
     let irs;
     // handles lowering
     if (tp.isa == "ebb") {
@@ -591,9 +753,7 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
     let isNullMoveCommand = (ir: IR) => {
         return ir.op === "move" && (ir.args.x === null || ir.args.y === null);
     }
-    let limits = kinematicLimits(Vec3(300.0, 300.0, 150.0),
-                                 Vec3(50.0, 50.0, 25.0), 1e-3, 1e-2); // can change later
-    let vMaxEitherAxis = Math.max(limits.vMax.x, limits.vMax.y);
+    let vMaxEitherAxis = Math.max(kl.vMax.x, kl.vMax.y);
     irs.forEach(function (ir: IR, index: number) {
         if (isNullMoveCommand(ir)) {
             return;
@@ -612,15 +772,15 @@ function computeLineSegments(tp: Toolpath): TrajectoryPasses {
 
         if (segmentNorm >= 1e-18) {
             let segment = fromGeo(s.instruction, s.moveId, s.startVelocity,
-                                  s.endVelocity, startLocation, endLocation, limits);
+                                  s.endVelocity, startLocation, endLocation, kl);
             plannerSegments.push(segment);
             startLocation = endLocation;
         }
     });
 
-    let halfPlanned = [... forwardPass(plannerSegments, 0, limits)];
+    let halfPlanned = [... forwardPass(plannerSegments, 0, kl)];
 
-    let plannedSegments = [...planSegments(plannerSegments, limits)];
+    let plannedSegments = [...planSegments(plannerSegments, kl)];
 
     return planTriplets(segments, plannerSegments, halfPlanned, plannedSegments);
 }
@@ -780,7 +940,7 @@ function linspace(start: number, stop: number, cardinality: number): number[] {
 }
 */
 
-function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds }: TrajectoryWindowProps) {
+function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds, tssMarks }: TrajectoryWindowProps) {
     // TODO: do all the planning using the toolpath parameter passed in the props
     // let { locations, prePlanned, halfPlanned, fullyPlanned} = makeTestSegment(20);
     if (!toolpath) {
@@ -814,9 +974,13 @@ function TrajectoryWindow({ toolpath, lineSegments, filterSegmentIds }: Trajecto
             </React.Fragment>
         )} */}
         <div className="plot-title">Velocity Curve</div>
-        <ProfilePlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
+        <ProfilePlot lineSegments={lineSegments}
+                     selectedTSSMarks={tssMarks}
+                     filterSegmentIds={filterSegmentIds}/>
         <div className="plot-title">XY Spatial Toolpath</div>
-        <SegmentPlot lineSegments={lineSegments} filterSegmentIds={filterSegmentIds}/>
+        <SegmentPlot lineSegments={lineSegments}
+                     selectedTSSMarks={tssMarks}
+                     filterSegmentIds={filterSegmentIds}/>
     </div>)
 };
 
@@ -876,6 +1040,7 @@ function calculateAnalysis(signal: number[], sampleRate: number): FourierAnalysi
     return { frequencies: freqBins, magnitudes: magnitudes };
 }
 
+// @ts-ignore
 function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
                                     FourierAnalysisWindowProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -887,18 +1052,25 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
         let filteredSignal = signal;
         let analysis = calculateAnalysis(filteredSignal, 100);
         const plot = Plot.plot({
-           marks: [
-            // TODO: bin to integer frequencies?
-            Plot.dot(analysis.frequencies, {
-                x: (freq: number) => freq,
-                y: (_, i: number) => analysis.magnitudes[i],
-                r: 1
-            }),
-            Plot.crosshair(analysis.frequencies, {
-                x: (freq: number) => freq,
-                y: (_, i: number) => analysis.magnitudes[i],
-            })
-           ]
+            x: { label: 'frequency' },
+            y: { label: 'magnitude' },
+            marks: [
+             // TODO: bin to integer frequencies?
+             Plot.line(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+                 strokeWidth: 0.5
+             }),
+             Plot.areaY(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+                 fillOpacity: 0.3
+             }),
+             Plot.crosshair(analysis.frequencies, {
+                 x: (freq: number) => freq,
+                 y: (_, i: number) => analysis.magnitudes[i],
+             })
+            ]
         });
         if (containerRef.current) {
             containerRef.current.append(plot);
@@ -907,7 +1079,7 @@ function FourierAnalysisWindow({ lineSegments, filterSegmentIds }:
     }, [lineSegments, filterSegmentIds]);
     return (
         <div ref={containerRef}>
-            <div className="plot-title">Fourier Analysis</div>
+            <div className="plot-title">Spectral Analysis</div>
         </div>
     );
 }
@@ -930,17 +1102,128 @@ function InstructionWindow({ lineSegments, filterSegmentIds } : InstructionWindo
     return (
         <div className='instruction-window'>
            <div className="plot-title">Instructions</div>
-           <div>|I| = {instructions.length}, |S| = {filteredSegments.length}</div>
+           <div className='instruction-length'>
+                |I| = {instructions.length}, |S| = {filteredSegments.length}
+            </div>
            <ul className="instruction-list">{listItems}</ul>
         </div>
     );
 }
 
+function context2d(width: number, height: number, dpi: number | null) {
+    if (dpi == null) dpi = devicePixelRatio;
+    var canvas = document.createElement("canvas");
+    canvas.width = width * dpi;
+    canvas.height = height * dpi;
+    canvas.style.width = width + "px";
+    var context = canvas.getContext("2d") as CanvasRenderingContext2D;
+    context.scale(dpi, dpi);
+    return context;
+}
+
+function serialize(svg: SVGElement) {
+    const xmlns = "http://www.w3.org/2000/xmlns/";
+    const xlinkns = "http://www.w3.org/1999/xlink";
+    const svgns = "http://www.w3.org/2000/svg";
+    let svgNode = svg.cloneNode(true);
+    const fragment = window.location.href + "#";
+    const walker = document.createTreeWalker(svgNode, NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+        // @ts-ignore
+        for (const attr of walker.currentNode.attributes) {
+            if (attr.value.includes(fragment)) {
+            attr.value = attr.value.replace(fragment, "#");
+            }
+        }
+    }
+    svg.setAttributeNS(xmlns, "xmlns", svgns);
+    svg.setAttributeNS(xmlns, "xmlns:xlink", xlinkns);
+    const serializer = new window.XMLSerializer;
+    const string = serializer.serializeToString(svg);
+    return new Blob([string], {type: "image/svg+xml"});
+};
+
+function download(blob: Blob, name = 'plot.png') {
+    // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
+    const blobUrl = URL.createObjectURL(blob);
+  
+    // Create a link element
+    const link = document.createElement("a");
+  
+    // Set link's href to point to the Blob URL
+    link.href = blobUrl;
+    link.download = name;
+  
+    // Append link to the body
+    document.body.appendChild(link);
+  
+    // Dispatch click event on the link
+    // This is necessary as link.click() does not work on the latest firefox
+    link.dispatchEvent(
+      new MouseEvent('click', { 
+        bubbles: true, 
+        cancelable: true, 
+        view: window 
+      })
+    );
+  
+    // Remove link from body
+    document.body.removeChild(link);
+  }
+  
+
+function rasterize(svg: SVGElement) {
+    return new Promise<Blob | null>((resolve, reject) => {
+        const image = new Image;
+        image.onerror = reject;
+        image.onload = () => {
+            const rect = svg.getBoundingClientRect();
+            const context = context2d(rect.width, rect.height, null);
+            context.drawImage(image, 0, 0, rect.width, rect.height);
+            context.canvas.toBlob((blob) => {
+                resolve(blob);
+            });
+        };
+        image.src = URL.createObjectURL(serialize(svg));
+    });
+}
+
+// @ts-ignore
+function downloadPlot(index: number, name: string) {
+    let svgs = document.getElementsByTagName('svg');
+    let svg = svgs[index];
+    rasterize(svg).then((raster) => {
+        if (raster === null) {
+            console.error('Couldn\'t download a plot.')
+        } else {
+            download(raster, name);
+        }
+    });
+}
+
+(window as any).downloadPlot = downloadPlot;
+
 function App() {
-    const defaultToolpath = TOOLPATH_TABLE["propellerTopScallop"];
+    const defaultToolpath = TOOLPATH_TABLE["triangle"];
+    const defaultLimits: KinematicLimits = {
+        vMax: {
+            x: 300,
+            y: 300,
+            z: 150
+        },
+        aMax: {
+            x: 50,
+            y: 50,
+            z: 25
+        },
+        junctionDeviation: 1e-3,
+        junctionSpeed: 1e-2
+    }
     const [currentToolpath, setCurrentToolpath] = useState<Toolpath | null>(defaultToolpath);
     const [lineSegments, setLineSegments] = useState<LineSegment[]>([]);
     const [filterSegmentIds, setFilterSegmentIds] = useState<SegmentIdSet>("all_segments");
+    const [kinematicLimits, setKinematicLimits] = useState<KinematicLimits>(defaultLimits);
+    const [tssMarks, setTSSMarks] = useState<Set<TSSMark>>(new Set(['lines']));
     const selectToolpath = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const toolpathName = event.target.value;
         const toolpath = TOOLPATH_TABLE[toolpathName];
@@ -949,12 +1232,13 @@ function App() {
 
     useEffect(() => {
         if (currentToolpath !== null) {
-            let { fullyPlanned } = computeLineSegments(currentToolpath);
+            let { fullyPlanned } = computeLineSegments(currentToolpath, kinematicLimits);
+            setFilterSegmentIds('all_segments');
             setLineSegments(fullyPlanned);
         }
-    }, [currentToolpath]);
+    }, [currentToolpath, kinematicLimits]);
 
-    const handleBinSelect = (selectIds: Set<number> | AllSegments) => {
+    const handleSegmentRefilter = (selectIds: SegmentIdSet) => {
         if (selectIds === null) {
             setFilterSegmentIds('all_segments');
         }
@@ -963,16 +1247,24 @@ function App() {
         }
     }
 
+    const changeTSSMarks = (newMarks: Set<TSSMark>) => {
+        setTSSMarks(newMarks);
+    };
+
     return (
         <div>
-            <DashboardSettings onSelect={selectToolpath}></DashboardSettings>
-            <DepthHistogram lineSegments={lineSegments} onBinSelect={handleBinSelect}/>
+            <DashboardSettings onSelect={selectToolpath}
+                            onTSSChange={changeTSSMarks}
+                            onLimitChange={setKinematicLimits}></DashboardSettings>
+            <DepthHistogram lineSegments={lineSegments}
+                            onSegmentRefilter={handleSegmentRefilter}/>
             <TrajectoryWindow 
               toolpath={currentToolpath}
               lineSegments={lineSegments}
-              filterSegmentIds={filterSegmentIds}/>
-              <FourierAnalysisWindow lineSegments={lineSegments}
-                                     filterSegmentIds={filterSegmentIds}/>
+              filterSegmentIds={filterSegmentIds}
+              tssMarks={tssMarks}/>
+              {/* <FourierAnalysisWindow lineSegments={lineSegments}
+                                     filterSegmentIds={filterSegmentIds}/> */}
               <InstructionWindow lineSegments={lineSegments}
                                      filterSegmentIds={filterSegmentIds}/>
         </div>

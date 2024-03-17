@@ -7,12 +7,28 @@
     margin-bottom: 10px;
 }
 
-.dashboard-settings {
+.klimit-inputs {
     display: flex;
+}
+
+.text-input {
+    width: 60px;
+}
+
+.text-input label {
+    font-size: 12px;
+}
+
+.text-input input[type="text"]{
+    width: 40px;
 }
 
 .instruction-window {
     padding-left: 10px;
+}
+
+.instruction-length {
+    font-family: monospace;
 }
 
 .instruction-list {
