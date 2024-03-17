@@ -11,16 +11,26 @@
     display: flex;
 }
 
+.dashboard-settings {
+    margin-bottom: 10px;
+}
+
 .text-input {
-    width: 60px;
+    width: 90px;
 }
 
 .text-input label {
-    font-size: 12px;
+    font-size: 9px;
 }
 
 .text-input input[type="text"]{
-    width: 40px;
+    width: 60px;
+}
+
+.checkboxes {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .instruction-window {

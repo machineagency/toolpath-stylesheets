@@ -13,6 +13,11 @@ import { fftInPlace, util, ComplexNumber } from "fft-js";
 
 import './trajectory.css'
 
+function camelCaseToWords(s: string) {
+    const result = s.replace(/([A-Z])/g, ' $1');
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  }
+
 const DEBUG: boolean = false;
 
 type AllSegments = "all_segments";
@@ -68,7 +73,7 @@ const TextInput = ({ label, value, onValueChange }: TextInputProps) => {
   
     return (
         <div className="text-input">
-          <label>{label}</label>
+          <label>{camelCaseToWords(label)}</label>
           <input
             type="text"
             value={value}
@@ -105,7 +110,9 @@ function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
     let labels = Array.from(allTSSMarks).map(markName => {
         return (
             <div key={'div-' + markName}>
-                <label key={'label-' + markName} htmlFor={markName}>{markName}</label>
+                <label key={'label-' + markName} htmlFor={markName}>
+                    {camelCaseToWords(markName)}
+                </label>
                 <input
                     type="checkbox"
                     name={markName}
@@ -118,7 +125,7 @@ function Checkboxes({ onCheckboxChange }: CheckboxesProps) {
         );
     });
     return (
-        <div>{labels}</div>
+        <div className='checkboxes'>{labels}</div>
     );
 }
 
