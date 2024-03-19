@@ -329,7 +329,7 @@ function SegmentPlot({ lineSegments, filterSegmentIds, selectedTSSMarks }: PlotP
                     }
                     let curr = arr[i];
                     let next = arr[i + 1];
-                    if (curr.start.z < 0 && next.start.z < 0) {
+                    if (curr.start.z > 0 && next.start.z > 0) {
                         return null;
                     }
                     return [curr, next];
